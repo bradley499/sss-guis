@@ -105,7 +105,7 @@ Have a tabular collection of widgets with corresponding names for each view.
 |Property|Type|Meaning|
 |-|-|-|
 |`items`|Sequence (list) of [`Tab items`](#tab-items)|See [Tab items](#tab-items).|
-|`position`|`string`|The location of the tab buttons: "top", "bottom", "left", or "right".|
+|`position`|`string`|*Optional* - The location of the tab buttons: "top", "bottom", "left", or "right".|
 ##### Tab items
 |Property|Type|Meaning|
 |-|-|-|
@@ -121,22 +121,22 @@ Used to show large text.
 |Property|Type|Meaning|
 |-|-|-|
 |`text`|`string` or `number` or `boolean`|The text to be shown.|
-|`alignment`|[`Textual alignment`](#textual-alignment)|See [Textual alignment](#textual-alignment)|
-|`color`|`string`|The color of the text. Must be a valid CSS color.|
+|`alignment`|[`Textual alignment`](#textual-alignment)|*Optional* - See [Textual alignment](#textual-alignment)|
+|`color`|`string`|*Optional* - The color of the text. Must be a valid CSS color.|
 
 #### `text`
 Used to show a lot of text.
 |Property|Type|Meaning|
 |-|-|-|
 |`text`|`string` or `number` or `boolean`|The text to be shown.|
-|`alignment`|[`Textual alignment`](#textual-alignment)|See [Textual alignment](#textual-alignment)|
-|`color`|`string`|The color of the text. Must be a valid CSS color.|
+|`alignment`|[`Textual alignment`](#textual-alignment)|*Optional* - See [Textual alignment](#textual-alignment)|
+|`color`|`string`|*Optional* - The color of the text. Must be a valid CSS color.|
 
 #### Textual alignment
 |Property|Type|Meaning|
 |-|-|-|
-|`horizontal`|`string`|The horizontal alignment of the text: "left", "center", or "right".|
-|`vertical`|`string`|The vertical alignment of the text: "top", "middle", or "bottom".|
+|`horizontal`|`string`|*Optional* - The horizontal alignment of the text: "left", "center", or "right".|
+|`vertical`|`string`|*Optional* - The vertical alignment of the text: "top", "middle", or "bottom".|
 
 ### Multimedia
 #### `audio`
@@ -150,14 +150,14 @@ Used to load an image into the GUI. This widget checks whether the GUI environme
 |Property|Type|Meaning|
 |-|-|-|
 |`source`|`string`|The location of the image source file.|
-|`contain`|`string`|This can be set to either to: "fit" the image fit its entire content within the widget, or "fill" the entire widget with the content (some content may be lost).|
+|`contain`|`string`|*Optional* - This can be set to either to: "fit" the image fit its entire content within the widget, or "fill" the entire widget with the content (some content may be lost).|
 
 #### `video`
 Used to load an video player into the GUI. This widget checks whether the GUI environment supports the video format.
 |Property|Type|Meaning|
 |-|-|-|
 |`source`|`string`|The location of the video source file.|
-|`contain`|`string`|This can be set to either to: "fit" the image fit its entire content within the widget, or "fill" the entire widget with the content (some content may be lost).|
+|`contain`|`string`|*Optional* - This can be set to either to: "fit" the video fit its entire content within the widget, or "fill" the entire widget with the content (some content may be lost).|
 
 ### Additional widget modules
 This GUI system is modular - by design - and can be easily extended by external projects, provided that new externally provided widgets inherit from the `widget_t` TypeScript class, and are made known to the widget rendering subsystem. All exported TypeScript declarations are generated at compile time, and are populated into the build artifact `guis.d.ts`.

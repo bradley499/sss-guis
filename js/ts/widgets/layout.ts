@@ -63,7 +63,7 @@ export class layout_t extends widget_t {
             if (column < 0) {
                 throw new Error("A layout can only have a column with a size that is positive");
             }
-            return (column.toString() + "fr");
+            return ("minmax(0," + column.toString() + "fr)");
         }).join(" ");
         const rowsStyle: string = rows.map(row => {
             if (typeof row !== "number") {
@@ -75,7 +75,7 @@ export class layout_t extends widget_t {
             if (row < 0) {
                 throw new Error("A layout can only have a row with a size that is positive");
             }
-            return (row.toString() + "fr");
+            return ("minmax(0," + row.toString() + "fr)");
         }).join(" ");
         const gapStyle: string = (() => {
             if (this.configurationHas(configuration, "gap")) {

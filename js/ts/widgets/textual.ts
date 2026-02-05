@@ -30,8 +30,8 @@ export abstract class textual_t extends widget_t {
             throw new Error(`A ${this.content.className} widget requires \`text\` to be shown`);
         }
         this.content.innerText = (configuration as any).text as string;
-        if (this.configurationHas(configuration, "align")) {
-            const alignment: any = (configuration as any).align;
+        if (this.configurationHas(configuration, "alignment")) {
+            const alignment: any = (configuration as any).alignment;
             if (this.configurationHas(alignment, "horizontal")) {
                 const horizontalAlignment: textualAlignmentHorizontal_t = alignment.horizontal;
                 switch (horizontalAlignment) {

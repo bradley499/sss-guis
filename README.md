@@ -48,6 +48,8 @@ The first widget that will be used in the GUI, as the parent of all other widget
 #### Widget configurations
 Widget configurations are simple - by design.
 
+Name each widget using a unique top-level key. Widget names are case-insensitive, and are internally represented as lowercase strings. Widget names must **not** contain whitespace.
+
 The core principle is that a widget needs to declare it's `type` in order for it to be valid. Additional complex YAML properties are allowed, but ultimately may not be used by the widget (defined by `type`). The property `type` will not be accessible by the widget within the generated GUI when parsing all property configurations associated to the widget, as this information would be redundant by the time the widget is being constructed.
 
 If a widget requires a child widget defined elsewhere, then it must mention its name via an `object` reference property.

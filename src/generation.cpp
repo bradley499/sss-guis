@@ -4,7 +4,6 @@
 #include "structure.hpp"
 
 #include <algorithm>
-#include <filesystem>
 #include <fstream>
 #include <future>
 #include <iostream>
@@ -12,6 +11,7 @@
 #include <nlohmann/json.hpp>
 #include <streambuf>
 #include <thread>
+#include <yaml-cpp/yaml.h>
 
 using namespace sss::guis;
 
@@ -94,7 +94,7 @@ namespace
     std::filesystem::path convert_absolute_path_to_relative(std::filesystem::path const &target_path, std::filesystem::path const &base_path)
     {
         std::filesystem::path filepath;
-        for (auto const &directory : std::filesystem::relative(std::filesystem::absolute(target_path), base_path))
+        for (auto const &directory : std::filesystem::relative(std::filesystem::absolute(target_path).lexically_normal(), base_path))
         {
             if (directory == ".." || directory == ".")
                 continue;
@@ -140,6 +140,26 @@ namespace
 
         return result.string();
     }
+
+    /**
+     * @brief Get the line number of a YAML Mark object
+     * @param mark The YAML Mark object to get the line number from
+     * @returns The line number of the YAML Mark object
+     */
+    int yaml_mark_line_number(YAML::Mark const &mark)
+    {
+        return (mark.line + 1);
+    }
+
+    /**
+     * @brief Get the line number of a YAML Node object
+     * @param node The YAML Node object to get the line number from
+     * @return The line number of the YAML Node object
+     */
+    int yaml_node_line_number(YAML::Node const &node)
+    {
+        return yaml_mark_line_number(node.Mark());
+    }
 }
 
 generation_t::generation_t(std::filesystem::path const &configuration_file, std::filesystem::path const &output_directory)
@@ -166,17 +186,19 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
     }
     catch (YAML::Exception const &e)
     {
-        throw std::runtime_error("Failed to load descriptive YAML file \"" + configuration_file.string() + "\"");
+        throw std::runtime_error("Failed to load descriptive YAML file \"" + configuration_file.string() + "\" due to an error on line " + std::to_string(yaml_mark_line_number(e.mark)) + ": " + e.msg);
     }
     for (YAML::Node const &gui_node : gui_nodes)
     {
+        if (!gui_node.IsMap())
+            throw std::runtime_error("Expected `gui` to hold a defined configuration on line " + std::to_string(yaml_node_line_number(gui_node)) + " of \"" + configuration_file.string() + "\"");
         gui_t current_gui_data = {};
 
         // Check whether core configuration strings are present
         for (std::string const field : {"name", "config", "stylesheet"})
         {
             if (!gui_node[field].IsDefined())
-                throw std::runtime_error("Required field of `" + field + "` is missing");
+                throw std::runtime_error("Required field of `" + field + "` is missing for a gui as defined on line " + std::to_string(yaml_node_line_number(gui_node[field])) + " of \"" + configuration_file.string() + "\"");
             if (gui_node[field].IsScalar())
             {
                 try
@@ -188,25 +210,28 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
                 {
                 }
             }
-            throw std::runtime_error("Unable to parse required field of `" + field + "` since a string is expected");
+            throw std::runtime_error("Unable to parse required field of `" + field + "` since a string is expected on line " + std::to_string(yaml_node_line_number(gui_node[field])) + " of \"" + configuration_file.string() + "\"");
         }
 
         // Store name of GUI
-        current_gui_data.name = gui_node["name"].as<std::string>();
+        auto const name = gui_node["name"];
+        current_gui_data.name = name.as<std::string>();
         if (is_empty(current_gui_data.name))
-            throw std::runtime_error("A name must not be empty");
+            throw std::runtime_error("A name must not be empty on line " + std::to_string(yaml_node_line_number(name)) + " of \"" + configuration_file.string() + "\"");
 
         // Store configuration filepath of GUI
-        current_gui_data.source_configuration_file = gui_node["config"].as<std::string>();
+        auto const config = gui_node["config"];
+        current_gui_data.source_configuration_file = config.as<std::string>();
         current_gui_data.source_configuration_file = convert_relative_path_to_absolute(current_gui_data.source_configuration_file, configuration_file).string();
         if (current_gui_data.source_configuration_file.empty() || !std::filesystem::exists(current_gui_data.source_configuration_file))
-            throw std::runtime_error("Unable to find a source config file of \"" + current_gui_data.source_configuration_file + "\"");
+            throw std::runtime_error("Unable to find a source config file of \"" + current_gui_data.source_configuration_file + "\" as defined on line " + std::to_string(yaml_node_line_number(config)) + " of \"" + configuration_file.string() + "\"");
 
         // Store stylesheet filepath of GUI
-        current_gui_data.stylesheet_file = convert_relative_path_to_absolute(gui_node["stylesheet"].as<std::string>(), configuration_file);
-        std::filesystem::path stylesheet_path = std::filesystem::absolute(current_gui_data.stylesheet_file);
+        auto const stylesheet = gui_node["stylesheet"];
+        current_gui_data.stylesheet_file = convert_relative_path_to_absolute(stylesheet.as<std::string>(), configuration_file);
+        std::filesystem::path stylesheet_path = std::filesystem::absolute(current_gui_data.stylesheet_file).lexically_normal();
         if (!std::filesystem::exists(stylesheet_path.string()))
-            throw std::runtime_error("Unable to find the stylesheet \"" + current_gui_data.stylesheet_file + "\"");
+            throw std::runtime_error("Unable to find the stylesheet \"" + current_gui_data.stylesheet_file + "\" defined on line " + std::to_string(yaml_node_line_number(stylesheet)) + " of \"" + configuration_file.string() + "\"");
         current_gui_data.stylesheet_file = convert_absolute_path_to_relative(stylesheet_path, m_configuration_directory);
         m_dependencies[std::filesystem::weakly_canonical(stylesheet_path)] = current_gui_data.stylesheet_file;
 
@@ -233,7 +258,7 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
                     {
                     }
                 }
-                throw std::runtime_error("Unable to parse `debug` since a boolean value is expected");
+                throw std::runtime_error("Unable to parse `debug` since a boolean value is expected on line " + std::to_string(yaml_node_line_number(debug)) + " of \"" + configuration_file.string() + "\"");
             } while (false);
         }
         // Check whether modules are listed
@@ -245,20 +270,20 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
             if (modules.IsSequence())
             {
                 // Get the directory of the file being processed
-                for (YAML::Node const &dep_node : modules)
+                for (YAML::Node const &module : modules)
                 {
-                    if (!dep_node.IsScalar())
-                        throw std::runtime_error("Expected a string path for a module in \"" + configuration_file.string() + "\"");
+                    if (!module.IsScalar())
+                        throw std::runtime_error("Expected a string path for a module on line " + std::to_string(yaml_node_line_number(module)) + " of \"" + configuration_file.string() + "\"");
 
                     // Convert the dependency string to a std::filesystem::path object
                     std::filesystem::path module_path;
                     try
                     {
-                        module_path = convert_relative_path_to_absolute(dep_node.as<std::string>(), configuration_file);
+                        module_path = convert_relative_path_to_absolute(module.as<std::string>(), configuration_file);
                     }
                     catch (YAML::BadConversion const &e)
                     {
-                        throw std::runtime_error("Expected a string path for a module in \"" + configuration_file.string() + "\"");
+                        throw std::runtime_error("Expected a string path for a module on line " + std::to_string(yaml_node_line_number(module)) + " of \"" + configuration_file.string() + "\"");
                     }
                     if (std::filesystem::exists(module_path) && std::filesystem::is_regular_file(module_path))
                     {
@@ -267,7 +292,7 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
                         current_gui_data.module_files.push_back(module_path_relative);
                     }
                     else
-                        throw std::runtime_error("No module file exists at \"" + module_path.string() + "\"");
+                        throw std::runtime_error("No module file exists at \"" + module_path.string() + "\" as defined on line " + std::to_string(yaml_node_line_number(module)) + " of \"" + configuration_file.string() + "\"");
                 }
             }
         }
@@ -280,20 +305,20 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
             if (dependencies.IsSequence())
             {
                 // Get the directory of the file being processed
-                for (YAML::Node const &dep_node : dependencies)
+                for (YAML::Node const &dependency : dependencies)
                 {
-                    if (!dep_node.IsScalar())
-                        throw std::runtime_error("Expected a string path for a dependency in \"" + configuration_file.string() + "\"");
+                    if (!dependency.IsScalar())
+                        throw std::runtime_error("Expected a string path for a dependency on line " + std::to_string(yaml_node_line_number(dependency)) + " of \"" + configuration_file.string() + "\"");
 
                     // Convert the dependency string to a std::filesystem::path object
                     std::string dependency_path;
                     try
                     {
-                        dependency_path = convert_relative_path_to_absolute(dep_node.as<std::string>(), configuration_file);
+                        dependency_path = convert_relative_path_to_absolute(dependency.as<std::string>(), configuration_file);
                     }
                     catch (YAML::BadConversion const &e)
                     {
-                        throw std::runtime_error("Expected a string path for a dependency in \"" + configuration_file.string() + "\"");
+                        throw std::runtime_error("Expected a string path for a dependency on line " + std::to_string(yaml_node_line_number(dependency)) + " of \"" + configuration_file.string() + "\"");
                     }
                     try
                     {
@@ -302,12 +327,12 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
                     }
                     catch (std::exception const &e)
                     {
-                        throw std::runtime_error("No file(s) exists for dependency \"" + dependency_path + "\" within the configuration directory.");
+                        throw std::runtime_error("No file(s) exists for dependency \"" + dependency_path + "\" within the configuration directory as defined on line " + std::to_string(yaml_node_line_number(dependency)) + " of \"" + configuration_file.string() + "\"");
                     }
                 }
             }
             else if (dependencies.Type() != YAML::NodeType::Null)
-                throw std::runtime_error("Unable to parse `dependencies` since a list is expected");
+                throw std::runtime_error("Unable to parse `dependencies` since a list is expected on line " + std::to_string(yaml_node_line_number(dependencies)) + " of \"" + configuration_file.string() + "\"");
         }
         m_guis.push_back(current_gui_data); // Add to the collection
     }

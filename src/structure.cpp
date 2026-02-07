@@ -33,6 +33,18 @@ namespace
     }
 
     /**
+     * @brief Converts a string to lowercase
+     * @param string The string to convert
+     * @returns Lowercase version of supplied string
+     */
+    std::string to_lower(std::string string)
+    {
+        std::transform(string.begin(), string.end(), string.begin(), [](unsigned char character)
+                       { return std::tolower(character); });
+        return string;
+    }
+
+    /**
      * @brief Counts the occurrence of widget types
      * @param widgets The widgets to count against
      * @returns Map of widget types and their occurrences
@@ -163,7 +175,7 @@ void structure_t::parse_file(std::filesystem::path const &file)
                 widget_name_t widget_name;
                 try
                 {
-                    widget_name = widget_entry.first.as<widget_name_t>();
+                    widget_name = to_lower(widget_entry.first.as<widget_name_t>());
                 }
                 catch (std::exception const &e)
                 {
@@ -245,7 +257,12 @@ void structure_t::parse_file(std::filesystem::path const &file)
 void structure_t::add_widget(widget_name_t const &name, widget_type_t const &type, widget_contents_t const &contents)
 {
     if (name.empty())
-        throw std::runtime_error("Failed to parse widget with the YAML definition of `None`");
+        throw std::runtime_error("Failed to parse widget with no name defined");
+
+    bool const name_contains_whitespace = std::any_of(name.begin(), name.end(), [](unsigned char character)
+                                                      { return std::isspace(character); });
+    if (name_contains_whitespace)
+        throw std::runtime_error("Cannot name a widget `" + name + "` due to whitespace within its name");
 
     int type_id = -1;
     auto const it = std::find(m_widget_types.begin(), m_widget_types.end(), type);
@@ -258,7 +275,7 @@ void structure_t::add_widget(widget_name_t const &name, widget_type_t const &typ
     }
 
     if (m_widgets.count(name))
-        throw std::runtime_error("The widget `" + name + "` already was defined");
+        throw std::runtime_error("Duplicate definitions of the widget `" + name + "`");
     m_widgets[name] = type_id;
     m_widget_contents[name] = contents;
 }
@@ -297,12 +314,15 @@ void structure_t::prune_references()
                 }
                 YAML::Node value = it->second;
 
-                if (key == "object" && value.IsScalar())
+                if (key == "object")
                 {
                     widget_name_t object_name;
                     try
                     {
-                        object_name = value.as<widget_name_t>();
+                        if (value.IsNull())
+                            object_name = widget_name_t("null");
+                        else if (value.IsScalar())
+                            object_name = to_lower(value.as<widget_name_t>());
                     }
                     catch (YAML::BadConversion const &e)
                     {
@@ -394,12 +414,15 @@ void structure_t::number_references()
             std::string key = it->first.as<std::string>();
             YAML::Node value = it->second;
 
-            if (key == "object" && value.IsScalar())
+            if (key == "object")
             {
                 widget_name_t object_name;
                 try
                 {
-                    object_name = value.as<widget_name_t>();
+                    if (value.IsNull())
+                        object_name = widget_name_t("null");
+                    else if (value.IsScalar())
+                        object_name = to_lower(value.as<widget_name_t>());
                 }
                 catch (YAML::BadConversion const &e)
                 {

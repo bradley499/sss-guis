@@ -242,8 +242,8 @@ void structure_t::parse_file(std::filesystem::path const &file)
                             throw std::runtime_error("Expected a string path for a dependency on line " + std::to_string(yaml_node_line_number(dependency)) + " of \"" + file.string() + "\"");
                         }
 
-                        // The 'file_path' is the absolute path of the current YAML file being parsed.
-                        // We want to resolve 'dependency_relative_path' relative to the directory of 'file_path'.
+                        // The 'file' is the absolute path of the current YAML file being parsed.
+                        // We want to resolve 'dependency_relative_path' relative to the directory of 'file'.
                         std::filesystem::path parent_dir = std::filesystem::absolute(file).parent_path();
 
                         // Construct the absolute path of the dependency

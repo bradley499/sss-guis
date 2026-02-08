@@ -22,7 +22,7 @@ namespace
      * @param string The string to check
      * @returns Whether the string is empty
      */
-    bool is_empty(std::string const &string)
+    inline bool is_empty(std::string const &string)
     {
         return std::all_of(string.begin(), string.end(), [](unsigned char character)
                            { return std::isspace(character); });
@@ -34,7 +34,7 @@ namespace
      * @param child Filepath
      * @returns If the child path is a descendant of the parent
      */
-    bool is_descendant(std::filesystem::path const &parent, std::filesystem::path const &child)
+    inline bool is_descendant(std::filesystem::path const &parent, std::filesystem::path const &child)
     {
         auto const [parent_iterator, child_iterator] = std::mismatch(parent.begin(), parent.end(), child.begin(), child.end());
         // Descendant if we exhausted parent but NOT child
@@ -46,7 +46,7 @@ namespace
      * @param paths A vector of filepaths
      * @returns A vector of filepaths with descendant filepaths removed
      */
-    std::vector<std::filesystem::path> const remove_descendant_paths(std::vector<std::filesystem::path> &paths)
+    inline std::vector<std::filesystem::path> const remove_descendant_paths(std::vector<std::filesystem::path> &paths)
     {
         // Sort the paths to ensure parent paths come before their descendants
         std::sort(paths.begin(), paths.end());
@@ -108,7 +108,7 @@ namespace
      * @param name The name to calculate against
      * @return Directory depth count
      */
-    int name_as_path_depth(std::string const &name)
+    inline int name_as_path_depth(std::string const &name)
     {
         std::filesystem::path name_path(name);
         int count = (std::distance(name_path.begin(), name_path.end()) - 1);
@@ -146,7 +146,7 @@ namespace
      * @param mark The YAML Mark object to get the line number from
      * @returns The line number of the YAML Mark object
      */
-    int yaml_mark_line_number(YAML::Mark const &mark)
+    inline int yaml_mark_line_number(YAML::Mark const &mark)
     {
         return (mark.line + 1);
     }
@@ -156,7 +156,7 @@ namespace
      * @param node The YAML Node object to get the line number from
      * @return The line number of the YAML Node object
      */
-    int yaml_node_line_number(YAML::Node const &node)
+    inline int yaml_node_line_number(YAML::Node const &node)
     {
         return yaml_mark_line_number(node.Mark());
     }

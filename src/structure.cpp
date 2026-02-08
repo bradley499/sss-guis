@@ -33,7 +33,7 @@ namespace
      * @param string The string to convert
      * @returns Lowercase version of supplied string
      */
-    std::string to_lower(std::string string)
+    inline std::string to_lower(std::string string)
     {
         std::transform(string.begin(), string.end(), string.begin(), [](unsigned char character)
                        { return std::tolower(character); });
@@ -45,7 +45,7 @@ namespace
      * @param node The YAML Node object to get the line number from
      * @return The line number of the YAML Node object
      */
-    int yaml_node_line_number(YAML::Node const &node)
+    inline int yaml_node_line_number(YAML::Node const &node)
     {
         return (node.Mark().line + 1);
     }
@@ -55,7 +55,7 @@ namespace
      * @param widgets The widgets to count against
      * @returns Map of widget types and their occurrences
      */
-    std::map<int, int> count_widget_type_occurrences(std::map<std::string, int> const &widgets)
+    inline std::map<int, int> count_widget_type_occurrences(std::map<std::string, int> const &widgets)
     {
         std::map<int, int> type_counts;
         for (auto const &pair : widgets)

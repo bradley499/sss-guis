@@ -11,7 +11,7 @@ namespace
      * @param pattern Glob pattern
      * @returns Regular expression
      */
-    std::regex const glob_to_regex(std::string const &pattern)
+    inline std::regex const glob_to_regex(std::string const &pattern)
     {
         std::string regex_pattern;
         for (char character : pattern)
@@ -37,7 +37,7 @@ namespace
      * @param wildcard_path Path to validate against
      * @returns Directory path prior to wildcard
      */
-    std::filesystem::path const get_starting_directory_from_wildcard_path(std::filesystem::path const &wildcard_path)
+    inline std::filesystem::path const get_starting_directory_from_wildcard_path(std::filesystem::path const &wildcard_path)
     {
         std::filesystem::path current_directory;
         for (auto const &component : wildcard_path)

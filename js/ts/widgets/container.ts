@@ -42,9 +42,6 @@ export class container_t extends widget_t {
                 this.content.appendChild(object);
                 resolve(this.content);
             } catch (error) {
-                if (error instanceof RangeError) {
-                    reject("Failed to render container (it is possible that a child item may be recursive)");
-                }
                 reject(error);
             }
         });

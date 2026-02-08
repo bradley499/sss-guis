@@ -114,9 +114,6 @@ export class layout_t extends widget_t {
                 });
                 resolve(this.content);
             } catch (error) {
-                if (error instanceof RangeError) {
-                    reject("Failed to render layout (it is possible that a child item may be recursive)");
-                }
                 reject(error);
             }
         });

@@ -111,9 +111,6 @@ export class tabs_t extends widget_t {
                 this.content.appendChild(tabView);
                 resolve(this.content);
             } catch (error) {
-                if (error instanceof RangeError) {
-                    reject("Failed to render tabs (it is possible that a child item may be recursive)");
-                }
                 reject(error);
             }
         });

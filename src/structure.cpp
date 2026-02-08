@@ -263,7 +263,55 @@ void structure_t::parse_file(std::filesystem::path const &file)
     }
     catch (YAML::Exception const &e)
     {
-        throw std::runtime_error("Unable to parse dependency file of \"" + file.string() + "\" due to an error on line " + std::to_string(e.mark.line + 1) + ": " + e.msg);
+        std::string yaml_error = e.msg;
+        if (yaml_error.empty())
+            yaml_error = "Unknown YAML parsing error occurred";
+        else // Reformat the YAML error messages to be more inline with other error messages
+        {
+            /**
+             * @brief Changes the text within an error message
+             * @param error The error message to modify
+             * @param replace The text to replace
+             * @param replacement The text to replace with
+             * @returns A modified error message
+             */
+            auto change_yaml_error = [](std::string error, const std::string &replace, const std::string &replacement)
+            {
+                size_t position = 0;
+                while ((position = error.find(replace, position)) != std::string::npos)
+                {
+                    error.replace(position, replace.length(), replacement);
+                    position += replacement.length();
+                }
+                return error;
+            };
+            if (yaml_error.compare(0, strlen(YAML::ErrorMsg::YAML_VERSION), YAML::ErrorMsg::YAML_VERSION) == 0)
+            {
+                yaml_error = change_yaml_error(yaml_error, YAML::ErrorMsg::YAML_VERSION, "Bad YAML version `") + "`";
+            }
+            else if (yaml_error.compare(0, strlen(YAML::ErrorMsg::INVALID_UNICODE), YAML::ErrorMsg::INVALID_UNICODE) == 0)
+            {
+                yaml_error = change_yaml_error(yaml_error, YAML::ErrorMsg::INVALID_UNICODE, "Invalid unicode `") + "`";
+            }
+            else if (yaml_error.compare(0, strlen(YAML::ErrorMsg::INVALID_ESCAPE), YAML::ErrorMsg::INVALID_ESCAPE) == 0)
+            {
+                yaml_error = change_yaml_error(yaml_error, YAML::ErrorMsg::INVALID_ESCAPE, "Unknown escape character `") + "`";
+            }
+            else if (yaml_error.compare(0, strlen(YAML::ErrorMsg::UNKNOWN_ANCHOR), YAML::ErrorMsg::UNKNOWN_ANCHOR) == 0)
+            {
+                yaml_error = change_yaml_error(yaml_error, YAML::ErrorMsg::UNKNOWN_ANCHOR, "The referenced anchor `") + "` is not defined";
+            }
+            else // Static error message (no content inserted from YAML file)
+            {
+                yaml_error = change_yaml_error(yaml_error, ",", "");
+                yaml_error = change_yaml_error(yaml_error, ";", "");
+                yaml_error = change_yaml_error(yaml_error, "*including*", "including");
+                yaml_error = change_yaml_error(yaml_error, "EOF", "End Of File character");
+                yaml_error = change_yaml_error(yaml_error, "can't", "cannot");
+                yaml_error.at(0) = std::toupper(static_cast<unsigned char>(yaml_error.at(0)));
+            }
+        }
+        throw std::runtime_error(yaml_error + " on line " + std::to_string(e.mark.line + 1) + " of \"" + file.string() + "\"");
     }
     catch (std::runtime_error const &e)
     {

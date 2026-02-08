@@ -375,8 +375,7 @@ void generation_t::generate(generation_t::gui_t const &data, std::string const &
         return parent_path;
     }();
 
-    std::vector<std::string>
-        modules;
+    std::vector<std::string> modules = {};
     std::transform(data.module_files.begin(), data.module_files.end(), std::back_inserter(modules),
                    [relative_adjustment](std::string const &module_file)
                    {

@@ -383,7 +383,7 @@ void structure_t::add_widget(widget_name_t const &name, widget_type_t const &typ
     m_widget_files[name] = file_reference;
 }
 
-void structure_t::prune_references()
+void structure_t::validate_and_prune_hierarchy()
 {
     std::unordered_set<widget_name_t> referenced_widgets = {};
 
@@ -402,12 +402,12 @@ void structure_t::prune_references()
     }
 
     /**
-     * @brief Iteratively finds object references within a single widget's YAML
+     * @brief Iteratively validate object references and prevent recursive structures
      * @param widget The current widget to search
      * @param widget_yaml_contents The YAML content of the widget
      * @param widget_file The source file of the widget
      */
-    auto find_references_iterative = [&](widget_t const &widget, YAML::Node const &widget_yaml_contents, std::filesystem::path const &widget_file)
+    auto validate_references_iterative = [&](widget_t const &widget, YAML::Node const &widget_yaml_contents, std::filesystem::path const &widget_file)
     {
         std::vector<YAML::Node> widget_contents = {};
         widget_contents.push_back(widget_yaml_contents);
@@ -458,6 +458,26 @@ void structure_t::prune_references()
                         }
                         if (m_widgets.count(object_name) == 0)
                             throw std::runtime_error("Child object reference from `" + widget.name + "` to `" + object_name + "` does not relate to any known widgets - on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
+                        widget_type_t const tag = value.Tag();
+                        switch (tag.size())
+                        {
+                        case 0:
+                            break;
+                        case 1:
+                        {
+                            if (tag != "?")
+                                throw std::runtime_error("Unexpected `" + tag + "` character prior to child object reference from `" + widget.name + "` to `" + object_name + "` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
+                            break;
+                        }
+                        default:
+                        {
+                            widget_type_t const object_type = m_widget_types.at(m_widgets.at(object_name));
+                            widget_type_t const object_type_tag = to_lower(tag.substr(1)); // Removes the tag handle
+                            if (object_type != object_type_tag)
+                                throw std::runtime_error("Child object reference from `" + widget.name + "` to `" + object_name + "` is of type `" + object_type + "` which does not match the enforced type of `" + object_type_tag + "` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
+                            break;
+                        }
+                        }
                         if (object_name == widget.name || std::find(widget.hierarchy.begin(), widget.hierarchy.end(), object_name) != widget.hierarchy.end())
                         {
                             std::string const trace_next = " > ";
@@ -494,7 +514,7 @@ void structure_t::prune_references()
         widget_t current_widget = widget_hierarchies_to_traverse.back();
         widget_hierarchies_to_traverse.pop_back();
         if (m_widget_contents.count(current_widget.name))
-            find_references_iterative(current_widget, m_widget_contents.at(current_widget.name), m_parsed_files.at(m_widget_files.at(current_widget.name)));
+            validate_references_iterative(current_widget, m_widget_contents.at(current_widget.name), m_parsed_files.at(m_widget_files.at(current_widget.name)));
     }
 
     // Identify orphaned widgets
@@ -610,7 +630,7 @@ void structure_t::number_references()
 
 std::string structure_t::build(bool const numeric_references)
 {
-    prune_references();
+    validate_and_prune_hierarchy();
     if (numeric_references)
         number_references();
 

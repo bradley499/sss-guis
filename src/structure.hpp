@@ -78,9 +78,9 @@ namespace sss::guis
          */
         void number_references();
         /**
-         * @brief Remove all unreferenced objects
+         * @brief Remove all unreferenced objects and validate object hierarchical structure
          */
-        void prune_references();
+        void validate_and_prune_hierarchy();
 
     public:
         /**

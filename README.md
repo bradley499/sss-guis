@@ -50,9 +50,9 @@ Widget configurations are simple - by design.
 
 Name each widget using a unique top-level key. Widget names are case-insensitive, and are internally represented as lowercase strings. Widget names must **not**: contain whitespace, or be named "null".
 
-The core principle is that a widget needs to declare it's `type` in order for it to be valid. Additional complex YAML properties are allowed, but ultimately may not be used by the widget (defined by `type`). The property `type` will not be accessible by the widget within the generated GUI when parsing all property configurations associated to the widget, as this information would be redundant by the time the widget is being constructed.
+The core principle is that a widget needs to declare it's `type` in order for it to be valid. Additional complex YAML properties are allowed, but ultimately may not be used by the widget (defined by `type`). The property `type` will not be accessible by the widget within the generated GUI when parsing all property configurations associated to the widget, as this information would be redundant by the time the widget is being constructed. The `type` of a widget must only consist of alphanumeric characters, as well as: periods (`.`), underscores (`_`), or hyphens (`-`).
 
-If a widget requires a child widget defined elsewhere, then it must mention its name via an `object` reference property.
+If a widget requires a child widget (defined elsewhere), then it must mention its name via an `object` reference property. Although all widgets define their own `type`, an optional strict check can be enforced by parent widgets to ensure that an `object` reference is of an expected `type`, this is done by specifying the `type` prepended with an exclamation mark (`!`) prior to the name - for example: `object: !name_of_type example_widget` - and if the referenced `object` is not of the `type` defined, the check will fail.
 
 ##### Example widget configuration
 ```yaml
@@ -60,7 +60,9 @@ example_widget: # Name of widget
   type: name_of_type
   complex_properties:
     example: true
-    object: another_widget
+  items:
+    - object: !name_of_type another_widget
+    - object: yet_another_widget
 ```
 
 ### Generation

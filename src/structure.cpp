@@ -39,6 +39,35 @@ namespace
                        { return std::tolower(character); });
         return string;
     }
+    /**
+     * @brief Validates whether a widget's name is value
+     * @param name The name of the widget to validate
+     * @throws When name is invalid
+     */
+    inline void validate_widget_name(std::string const &name)
+    {
+        if (name.empty())
+            throw std::runtime_error("Failed to parse widget with no name defined");
+        bool const name_contains_whitespace = std::any_of(name.begin(), name.end(), [](unsigned char character)
+                                                          { return std::isspace(character); });
+        if (name_contains_whitespace)
+            throw std::runtime_error("Cannot name a widget `" + name + "` due to whitespace within its name");
+        if (name == "null")
+            throw std::runtime_error("Cannot name a widget `" + name + "` as that name is not allowed");
+    }
+    /**
+     * @brief Validates whether a widget's type is value
+     * @param type The type of the widget to validate
+     * @throws When type is invalid
+     */
+    inline void validate_widget_type(std::string const &type)
+    {
+        if (type.empty())
+            throw std::runtime_error("Failed to parse widget with no `type` defined");
+        static constexpr std::string_view type_allowed_characters = "abcdefghijklmnopqrstuvwxyz0123456789._-";
+        if (type.find_first_not_of(type_allowed_characters) != std::string_view::npos)
+            throw std::runtime_error("Unable to declare a widget is of type `" + type + "` as it contains invalid characters");
+    }
 
     /**
      * @brief Get the line number of a YAML Node object
@@ -187,6 +216,11 @@ void structure_t::parse_file(std::filesystem::path const &file)
                 try
                 {
                     widget_name = to_lower(widget_entry.first.as<widget_name_t>());
+                    validate_widget_name(widget_name);
+                }
+                catch (std::runtime_error const &e)
+                {
+                    throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + file.string() + "\"");
                 }
                 catch (std::exception const &e)
                 {
@@ -203,11 +237,16 @@ void structure_t::parse_file(std::filesystem::path const &file)
                 widget_type_t widget_type;
                 try
                 {
-                    widget_type = type.as<widget_type_t>();
+                    widget_type = to_lower(type.as<widget_type_t>());
+                    validate_widget_type(widget_type);
+                }
+                catch (std::runtime_error const &e)
+                {
+                    throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(type)) + " of \"" + file.string() + "\"");
                 }
                 catch (std::exception const &e)
                 {
-                    throw std::runtime_error("Failed to parse the type (string) of widget `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(type)) + " of \"" + file.string() + "\"");
+                    throw std::runtime_error("Failed to parse the `type` (string) of widget `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(type)) + " of \"" + file.string() + "\"");
                 }
 
                 // Create a mutable copy of the node to remove the "type" key
@@ -308,6 +347,8 @@ void structure_t::parse_file(std::filesystem::path const &file)
                 yaml_error = change_yaml_error(yaml_error, "*including*", "including");
                 yaml_error = change_yaml_error(yaml_error, "EOF", "End Of File character");
                 yaml_error = change_yaml_error(yaml_error, "can't", "cannot");
+                yaml_error = change_yaml_error(yaml_error, "nodes", "properties");
+                yaml_error = change_yaml_error(yaml_error, "node", "property");
                 yaml_error.at(0) = std::toupper(static_cast<unsigned char>(yaml_error.at(0)));
             }
         }
@@ -325,17 +366,6 @@ void structure_t::parse_file(std::filesystem::path const &file)
 
 void structure_t::add_widget(widget_name_t const &name, widget_type_t const &type, widget_contents_t const &contents, widget_file_reference_t const file_reference)
 {
-    if (name.empty())
-        throw std::runtime_error("Failed to parse widget with no name defined");
-
-    bool const name_contains_whitespace = std::any_of(name.begin(), name.end(), [](unsigned char character)
-                                                      { return std::isspace(character); });
-    if (name_contains_whitespace)
-        throw std::runtime_error("Cannot name a widget `" + name + "` due to whitespace within its name");
-
-    if (name == "null")
-        throw std::runtime_error("Cannot name a widget `" + name + "` as that name is not allowed");
-
     int type_id = -1;
     auto const it = std::find(m_widget_types.begin(), m_widget_types.end(), type);
     if (it != m_widget_types.end())
@@ -353,7 +383,7 @@ void structure_t::add_widget(widget_name_t const &name, widget_type_t const &typ
     m_widget_files[name] = file_reference;
 }
 
-void structure_t::prune_references()
+void structure_t::validate_and_prune_hierarchy()
 {
     std::unordered_set<widget_name_t> referenced_widgets = {};
 
@@ -372,12 +402,12 @@ void structure_t::prune_references()
     }
 
     /**
-     * @brief Iteratively finds object references within a single widget's YAML
+     * @brief Iteratively validate object references and prevent recursive structures
      * @param widget The current widget to search
      * @param widget_yaml_contents The YAML content of the widget
      * @param widget_file The source file of the widget
      */
-    auto find_references_iterative = [&](widget_t const &widget, YAML::Node const &widget_yaml_contents, std::filesystem::path const &widget_file)
+    auto validate_references_iterative = [&](widget_t const &widget, YAML::Node const &widget_yaml_contents, std::filesystem::path const &widget_file)
     {
         std::vector<YAML::Node> widget_contents = {};
         widget_contents.push_back(widget_yaml_contents);
@@ -414,23 +444,47 @@ void structure_t::prune_references()
                         try
                         {
                             if (value.IsScalar())
+                            {
                                 object_name = to_lower(value.as<widget_name_t>());
+                                if (object_name.empty())
+                                    throw YAML::BadConversion(value.Mark());
+                            }
                             else
                                 throw YAML::BadConversion(value.Mark());
                         }
                         catch (YAML::BadConversion const &e)
                         {
-                            throw std::runtime_error("Child object reference of `" + widget.name + "` to a non-descriptive `object` string type on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
+                            throw std::runtime_error("Child object reference of `" + widget.name + "` refers to a non-descriptive `object` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
                         }
                         if (m_widgets.count(object_name) == 0)
                             throw std::runtime_error("Child object reference from `" + widget.name + "` to `" + object_name + "` does not relate to any known widgets - on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
+                        widget_type_t const tag = value.Tag();
+                        switch (tag.size())
+                        {
+                        case 0:
+                            break;
+                        case 1:
+                        {
+                            if (tag != "?")
+                                throw std::runtime_error("Unexpected `" + tag + "` character prior to child object reference from `" + widget.name + "` to `" + object_name + "` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
+                            break;
+                        }
+                        default:
+                        {
+                            widget_type_t const object_type = m_widget_types.at(m_widgets.at(object_name));
+                            widget_type_t const object_type_tag = to_lower(tag.substr(1)); // Removes the tag handle
+                            if (object_type != object_type_tag)
+                                throw std::runtime_error("Child object reference from `" + widget.name + "` to `" + object_name + "` is of type `" + object_type + "` which does not match the enforced type of `" + object_type_tag + "` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
+                            break;
+                        }
+                        }
                         if (object_name == widget.name || std::find(widget.hierarchy.begin(), widget.hierarchy.end(), object_name) != widget.hierarchy.end())
                         {
                             std::string const trace_next = " > ";
                             std::string const trace_recursive_object = " (recursive object)";
                             std::string trace = "";
                             bool found_first_reference = false;
-                            for (auto const &widget_ancestor : widget.hierarchy)
+                            for (widget_type_t const &widget_ancestor : widget.hierarchy)
                             {
                                 if (widget_ancestor == object_name)
                                     found_first_reference = true;
@@ -460,7 +514,7 @@ void structure_t::prune_references()
         widget_t current_widget = widget_hierarchies_to_traverse.back();
         widget_hierarchies_to_traverse.pop_back();
         if (m_widget_contents.count(current_widget.name))
-            find_references_iterative(current_widget, m_widget_contents.at(current_widget.name), m_parsed_files.at(m_widget_files.at(current_widget.name)));
+            validate_references_iterative(current_widget, m_widget_contents.at(current_widget.name), m_parsed_files.at(m_widget_files.at(current_widget.name)));
     }
 
     // Identify orphaned widgets
@@ -518,7 +572,7 @@ void structure_t::number_references()
     if (m_widgets.size() == 0)
         return;
     std::function<YAML::Node(widget_name_t const &, YAML::Node, std::filesystem::path const &)> number_references_recursive =
-        [&](widget_name_t const &widget_name, YAML::Node current_node, std::filesystem::path const &widget_file) -> YAML::Node
+        [&](widget_name_t const &widget_name, YAML::Node current_node, std::filesystem::path const &widget_file)
     {
         if (current_node.IsSequence())
         {
@@ -542,13 +596,17 @@ void structure_t::number_references()
                 try
                 {
                     if (value.IsScalar())
+                    {
                         object_name = to_lower(value.as<widget_name_t>());
+                        if (object_name.empty())
+                            throw YAML::BadConversion(value.Mark());
+                    }
                     else
                         throw YAML::BadConversion(value.Mark());
                 }
                 catch (YAML::BadConversion const &e)
                 {
-                    throw std::runtime_error("Child object reference of `" + widget_name + "` to a non-descriptive `object` string type on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `prune_references` method)
+                    throw std::runtime_error("Child object reference of `" + widget_name + "` refers to a non-descriptive `object` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `prune_references` method)
                 }
                 auto const widget_it = m_widgets.find(object_name);
                 if (widget_it != m_widgets.end())
@@ -572,7 +630,7 @@ void structure_t::number_references()
 
 std::string structure_t::build(bool const numeric_references)
 {
-    prune_references();
+    validate_and_prune_hierarchy();
     if (numeric_references)
         number_references();
 

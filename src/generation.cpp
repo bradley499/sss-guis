@@ -397,12 +397,12 @@ void generation_t::generate(generation_t::gui_t const &data, std::string const &
      * @param filepath The location of the file to write to
      * @param contents The contents of the file to be written
      */
-    std::function<void(std::string, std::string)> write_file = [](std::string const &filepath, std::string const &content) -> void
+    std::function<void(std::string, std::string)> write_file = [](std::string const &filepath, std::string const &content)
     {
         std::filesystem::create_directories(std::filesystem::path(filepath).parent_path());
         std::ofstream file(filepath);
         if (!file)
-            throw std::runtime_error("Failed to open file for writing: " + filepath);
+            throw std::runtime_error("Failed to open file for writing: \"" + filepath + "\"");
         file << content;
     };
 

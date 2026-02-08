@@ -83,7 +83,14 @@ export abstract class structure_t {
      * @internal
      */
     public static declareWidget(type: string, widget: () => widget_t): void {
-        if (type in this.widgetDeclarations) {
+        const typeAllowedCharacters: RegExp = /^[a-z0-9._\-]+$/;
+        if (!type) {
+            throw new Error(`A widget must have a type defined`);
+        }
+        type = type.toLowerCase();
+        if (!typeAllowedCharacters.test(type)) {
+            throw new Error(`A widget can not be named "${type}" as it contains invalid characters`);
+        } else if (type in this.widgetDeclarations) {
             throw new Error(`A widget named "${type}" has already been declared`);
         }
         this.widgetDeclarations[type] = widget;

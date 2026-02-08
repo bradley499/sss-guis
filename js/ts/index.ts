@@ -30,8 +30,6 @@ async function main(): Promise<void> {
     splashContent.appendChild(splashStatus);
     splashShadowRoot.appendChild(splashContent);
     document.body.replaceWith(splashContainer);
-    exportToWindow();
-    registerCoreWidgets();
     await new Promise<void>(async (resolve, reject) => {
         // Load GUI
         let gui_data: (gui_t | null) = null;
@@ -40,9 +38,11 @@ async function main(): Promise<void> {
         } catch (error: any) {
             reject(error);
         }
+        exportToWindow();
         try {
             // Start loading stylesheet
             const stylesheet: Promise<void> = loadStylesheet(gui_data!.stylesheet);
+            registerCoreWidgets();
             // Load modules
             splashStatus.innerText = "Loading modules...";
             gui_data!.modules.map(module => loadModule(module));

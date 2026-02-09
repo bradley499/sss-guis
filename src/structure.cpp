@@ -68,7 +68,6 @@ namespace
         if (type.find_first_not_of(type_allowed_characters) != std::string_view::npos)
             throw std::runtime_error("Unable to declare a widget is of type `" + type + "` as it contains invalid characters");
     }
-
     /**
      * @brief Get the line number of a YAML Node object
      * @param node The YAML Node object to get the line number from
@@ -180,188 +179,194 @@ structure_t::~structure_t()
 
 void structure_t::parse_file(std::filesystem::path const &file)
 {
+    std::vector<std::filesystem::path> dependency_files({file});
+    do
     {
-        auto const it = std::find(m_parsed_files.begin(), m_parsed_files.end(), file);
-        if (it != m_parsed_files.end())
+        std::filesystem::path const dependency_file = dependency_files.back();
+        dependency_files.pop_back();
         {
-            debug(m_debug_stream, m_name, "Additional reference was made to \"" + file.string() + "\"");
-            return;
-        }
-    }
-    if (!std::filesystem::exists(file))
-        throw std::runtime_error("Unable to find dependency file of \"" + file.string() + "\"");
-    debug(m_debug_stream, m_name, "Parsing configuration dependency \"" + file.string() + "\"...");
-    try
-    {
-        std::vector<YAML::Node> documents = {};
-        for (auto &document : YAML::LoadAllFromFile(file.string()))
-        {
-            if (!document.IsDefined() || !document.IsNull())
-                documents.push_back(document);
-        }
-        m_parsed_files.push_back(file);
-        if (documents.empty())
-        {
-            debug(m_debug_stream, m_name, "Empty dependency file located at \"" + file.string() + "\"");
-            return;
-        }
-        for (auto &&contents : documents)
-        {
-            if (!contents.IsMap())
-                throw std::runtime_error("Unable to parse non-mappable structure  on line " + std::to_string(yaml_node_line_number(contents)) + " of \"" + file.string() + "\"");
-
-            for (auto const &widget_entry : contents)
+            auto const it = std::find(m_parsed_files.begin(), m_parsed_files.end(), dependency_file);
+            if (it != m_parsed_files.end())
             {
-                widget_name_t widget_name;
-                try
-                {
-                    widget_name = to_lower(widget_entry.first.as<widget_name_t>());
-                    validate_widget_name(widget_name);
-                }
-                catch (std::runtime_error const &e)
-                {
-                    throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + file.string() + "\"");
-                }
-                catch (std::exception const &e)
-                {
-                    throw std::runtime_error("Failed to parse the name (string) of a widget on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + file.string() + "\"");
-                }
-
-                if (widget_name == "dependencies")
-                    continue;
-
-                YAML::Node const type = widget_entry.second["type"];
-                if (!type.IsDefined())
-                    throw std::runtime_error("The widget `" + widget_name + "` has no `type` definition - widget declared on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + file.string() + "\"");
-
-                widget_type_t widget_type;
-                try
-                {
-                    widget_type = to_lower(type.as<widget_type_t>());
-                    validate_widget_type(widget_type);
-                }
-                catch (std::runtime_error const &e)
-                {
-                    throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(type)) + " of \"" + file.string() + "\"");
-                }
-                catch (std::exception const &e)
-                {
-                    throw std::runtime_error("Failed to parse the `type` (string) of widget `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(type)) + " of \"" + file.string() + "\"");
-                }
-
-                // Create a mutable copy of the node to remove the "type" key
-                widget_contents_t widget_content_node = widget_entry.second;
-                widget_content_node.remove("type");
-                try
-                {
-                    add_widget(widget_name, widget_type, widget_content_node, static_cast<widget_file_reference_t>(m_parsed_files.size() - 1));
-                }
-                catch (std::runtime_error const &e)
-                {
-                    throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + file.string() + "\"");
-                }
+                debug(m_debug_stream, m_name, "Additional reference was made to \"" + dependency_file.string() + "\"");
+                continue;
             }
-
-            YAML::Node const dependencies = contents["dependencies"];
-            if (dependencies.IsDefined())
+        }
+        if (!std::filesystem::exists(dependency_file))
+            throw std::runtime_error("Unable to find dependency file of \"" + dependency_file.string() + "\"");
+        debug(m_debug_stream, m_name, "Parsing configuration dependency \"" + dependency_file.string() + "\"...");
+        try
+        {
+            std::vector<YAML::Node> documents = {};
+            for (auto &document : YAML::LoadAllFromFile(dependency_file.string()))
             {
-                if (dependencies.IsSequence())
+                if (!document.IsDefined() || !document.IsNull())
+                    documents.push_back(document);
+            }
+            m_parsed_files.push_back(dependency_file);
+            if (documents.empty())
+            {
+                debug(m_debug_stream, m_name, "Empty dependency file located at \"" + dependency_file.string() + "\"");
+                continue;
+            }
+            for (auto &&contents : documents)
+            {
+                if (!contents.IsMap())
+                    throw std::runtime_error("Unable to parse non-mappable structure on line " + std::to_string(yaml_node_line_number(contents)) + " of \"" + dependency_file.string() + "\"");
+
+                for (auto const &widget_entry : contents)
                 {
-                    for (YAML::Node const &dependency : dependencies)
+                    widget_name_t widget_name;
+                    try
                     {
-                        if (!dependency.IsScalar())
-                            throw std::runtime_error("Expected a string path for a dependency on line " + std::to_string(yaml_node_line_number(dependency)) + " of \"" + file.string() + "\"");
-                        std::filesystem::path dependency_relative_path;
-                        try
-                        {
-                            dependency_relative_path = dependency.as<std::string>();
-                        }
-                        catch (std::exception const &e)
-                        {
-                            throw std::runtime_error("Expected a string path for a dependency on line " + std::to_string(yaml_node_line_number(dependency)) + " of \"" + file.string() + "\"");
-                        }
+                        widget_name = to_lower(widget_entry.first.as<widget_name_t>());
+                        validate_widget_name(widget_name);
+                    }
+                    catch (std::runtime_error const &e)
+                    {
+                        throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + dependency_file.string() + "\"");
+                    }
+                    catch (std::exception const &e)
+                    {
+                        throw std::runtime_error("Failed to parse the name (string) of a widget on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + dependency_file.string() + "\"");
+                    }
 
-                        // The 'file' is the absolute path of the current YAML file being parsed.
-                        // We want to resolve 'dependency_relative_path' relative to the directory of 'file'.
-                        std::filesystem::path parent_dir = std::filesystem::absolute(file).parent_path();
+                    if (widget_name == "dependencies")
+                        continue;
 
-                        // Construct the absolute path of the dependency
-                        std::filesystem::path resolved_dependency_path;
-                        if (dependency_relative_path.is_absolute())
-                            resolved_dependency_path = dependency_relative_path;
-                        else
-                            resolved_dependency_path = parent_dir / dependency_relative_path;
+                    YAML::Node const type = widget_entry.second["type"];
+                    if (!type.IsDefined())
+                        throw std::runtime_error("The widget `" + widget_name + "` has no `type` definition - widget declared on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + dependency_file.string() + "\"");
 
-                        parse_file(std::filesystem::absolute(resolved_dependency_path.lexically_normal()).string());
+                    widget_type_t widget_type;
+                    try
+                    {
+                        widget_type = to_lower(type.as<widget_type_t>());
+                        validate_widget_type(widget_type);
+                    }
+                    catch (YAML::Exception const &e)
+                    {
+                        throw std::runtime_error("Failed to parse the `type` (string) of widget `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(type)) + " of \"" + dependency_file.string() + "\"");
+                    }
+                    catch (std::runtime_error const &e)
+                    {
+                        throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(type)) + " of \"" + dependency_file.string() + "\"");
+                    }
+
+                    // Create a mutable copy of the node to remove the "type" key
+                    widget_contents_t widget_content_node = widget_entry.second;
+                    widget_content_node.remove("type");
+                    try
+                    {
+                        add_widget(widget_name, widget_type, widget_content_node, static_cast<widget_file_reference_t>(m_parsed_files.size() - 1));
+                    }
+                    catch (std::runtime_error const &e)
+                    {
+                        throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + dependency_file.string() + "\"");
                     }
                 }
-                else if (dependencies.Type() != YAML::NodeType::Null)
-                    throw std::runtime_error("Unable to parse `dependencies` since a list is expected on line " + std::to_string(yaml_node_line_number(dependencies)) + " of \"" + file.string() + "\"");
-            }
-        }
-    }
-    catch (YAML::Exception const &e)
-    {
-        std::string yaml_error = e.msg;
-        if (yaml_error.empty())
-            yaml_error = "Unknown YAML parsing error occurred";
-        else // Reformat the YAML error messages to be more inline with other error messages
-        {
-            /**
-             * @brief Changes the text within an error message
-             * @param error The error message to modify
-             * @param replace The text to replace
-             * @param replacement The text to replace with
-             * @returns A modified error message
-             */
-            auto change_yaml_error = [](std::string error, const std::string &replace, const std::string &replacement)
-            {
-                size_t position = 0;
-                while ((position = error.find(replace, position)) != std::string::npos)
+
+                YAML::Node const dependencies = contents["dependencies"];
+                if (dependencies.IsDefined())
                 {
-                    error.replace(position, replace.length(), replacement);
-                    position += replacement.length();
+                    if (dependencies.IsSequence())
+                    {
+                        for (YAML::Node const &dependency : dependencies)
+                        {
+                            if (!dependency.IsScalar())
+                                throw std::runtime_error("Expected a string path for a dependency on line " + std::to_string(yaml_node_line_number(dependency)) + " of \"" + dependency_file.string() + "\"");
+                            std::filesystem::path dependency_relative_path;
+                            try
+                            {
+                                dependency_relative_path = dependency.as<std::string>();
+                            }
+                            catch (std::exception const &e)
+                            {
+                                throw std::runtime_error("Expected a string path for a dependency on line " + std::to_string(yaml_node_line_number(dependency)) + " of \"" + dependency_file.string() + "\"");
+                            }
+
+                            // The 'dependency_file' is the absolute path of the current YAML file being parsed.
+                            // We want to resolve 'dependency_relative_path' relative to the directory of 'dependency_file'.
+                            std::filesystem::path parent_dir = std::filesystem::absolute(dependency_file).parent_path();
+
+                            // Construct the absolute path of the dependency
+                            std::filesystem::path resolved_dependency_path;
+                            if (dependency_relative_path.is_absolute())
+                                resolved_dependency_path = dependency_relative_path;
+                            else
+                                resolved_dependency_path = parent_dir / dependency_relative_path;
+
+                            dependency_files.push_back(std::filesystem::absolute(resolved_dependency_path.lexically_normal()).string());
+                        }
+                    }
+                    else if (dependencies.Type() != YAML::NodeType::Null)
+                        throw std::runtime_error("Unable to parse `dependencies` since a list is expected on line " + std::to_string(yaml_node_line_number(dependencies)) + " of \"" + dependency_file.string() + "\"");
                 }
-                return error;
-            };
-            if (yaml_error.compare(0, strlen(YAML::ErrorMsg::YAML_VERSION), YAML::ErrorMsg::YAML_VERSION) == 0)
-            {
-                yaml_error = change_yaml_error(yaml_error, YAML::ErrorMsg::YAML_VERSION, "Bad YAML version `") + "`";
-            }
-            else if (yaml_error.compare(0, strlen(YAML::ErrorMsg::INVALID_UNICODE), YAML::ErrorMsg::INVALID_UNICODE) == 0)
-            {
-                yaml_error = change_yaml_error(yaml_error, YAML::ErrorMsg::INVALID_UNICODE, "Invalid unicode `") + "`";
-            }
-            else if (yaml_error.compare(0, strlen(YAML::ErrorMsg::INVALID_ESCAPE), YAML::ErrorMsg::INVALID_ESCAPE) == 0)
-            {
-                yaml_error = change_yaml_error(yaml_error, YAML::ErrorMsg::INVALID_ESCAPE, "Unknown escape character `") + "`";
-            }
-            else if (yaml_error.compare(0, strlen(YAML::ErrorMsg::UNKNOWN_ANCHOR), YAML::ErrorMsg::UNKNOWN_ANCHOR) == 0)
-            {
-                yaml_error = change_yaml_error(yaml_error, YAML::ErrorMsg::UNKNOWN_ANCHOR, "The referenced anchor `") + "` is not defined";
-            }
-            else // Static error message (no content inserted from YAML file)
-            {
-                yaml_error = change_yaml_error(yaml_error, ",", "");
-                yaml_error = change_yaml_error(yaml_error, ";", "");
-                yaml_error = change_yaml_error(yaml_error, "*including*", "including");
-                yaml_error = change_yaml_error(yaml_error, "EOF", "End Of File character");
-                yaml_error = change_yaml_error(yaml_error, "can't", "cannot");
-                yaml_error = change_yaml_error(yaml_error, "nodes", "properties");
-                yaml_error = change_yaml_error(yaml_error, "node", "property");
-                yaml_error.at(0) = std::toupper(static_cast<unsigned char>(yaml_error.at(0)));
             }
         }
-        throw std::runtime_error(yaml_error + " on line " + std::to_string(e.mark.line + 1) + " of \"" + file.string() + "\"");
-    }
-    catch (std::runtime_error const &e)
-    {
-        throw e;
-    }
-    catch (std::exception const &e)
-    {
-        throw std::runtime_error("Unable to parse dependency file of \"" + file.string() + "\"");
-    }
+        catch (YAML::Exception const &e)
+        {
+            std::string yaml_error = e.msg;
+            if (yaml_error.empty())
+                yaml_error = "Unknown YAML parsing error occurred";
+            else // Reformat the YAML error messages to be more inline with other error messages
+            {
+                /**
+                 * @brief Changes the text within an error message
+                 * @param error The error message to modify
+                 * @param replace The text to replace
+                 * @param replacement The text to replace with
+                 * @returns A modified error message
+                 */
+                auto const change_yaml_error = [](std::string error, const std::string &replace, const std::string &replacement)
+                {
+                    size_t position = 0;
+                    while ((position = error.find(replace, position)) != std::string::npos)
+                    {
+                        error.replace(position, replace.length(), replacement);
+                        position += replacement.length();
+                    }
+                    return error;
+                };
+                if (yaml_error.compare(0, strlen(YAML::ErrorMsg::YAML_VERSION), YAML::ErrorMsg::YAML_VERSION) == 0)
+                {
+                    yaml_error = change_yaml_error(yaml_error, YAML::ErrorMsg::YAML_VERSION, "Bad YAML version `") + "`";
+                }
+                else if (yaml_error.compare(0, strlen(YAML::ErrorMsg::INVALID_UNICODE), YAML::ErrorMsg::INVALID_UNICODE) == 0)
+                {
+                    yaml_error = change_yaml_error(yaml_error, YAML::ErrorMsg::INVALID_UNICODE, "Invalid unicode `") + "`";
+                }
+                else if (yaml_error.compare(0, strlen(YAML::ErrorMsg::INVALID_ESCAPE), YAML::ErrorMsg::INVALID_ESCAPE) == 0)
+                {
+                    yaml_error = change_yaml_error(yaml_error, YAML::ErrorMsg::INVALID_ESCAPE, "Unknown escape character `") + "`";
+                }
+                else if (yaml_error.compare(0, strlen(YAML::ErrorMsg::UNKNOWN_ANCHOR), YAML::ErrorMsg::UNKNOWN_ANCHOR) == 0)
+                {
+                    yaml_error = change_yaml_error(yaml_error, YAML::ErrorMsg::UNKNOWN_ANCHOR, "The referenced anchor `") + "` is not defined";
+                }
+                else // Static error message (no content inserted from YAML file)
+                {
+                    yaml_error = change_yaml_error(yaml_error, ",", "");
+                    yaml_error = change_yaml_error(yaml_error, ";", "");
+                    yaml_error = change_yaml_error(yaml_error, "*including*", "including");
+                    yaml_error = change_yaml_error(yaml_error, "EOF", "End Of File character");
+                    yaml_error = change_yaml_error(yaml_error, "can't", "cannot");
+                    yaml_error = change_yaml_error(yaml_error, "nodes", "properties");
+                    yaml_error = change_yaml_error(yaml_error, "node", "property");
+                    yaml_error.at(0) = std::toupper(static_cast<unsigned char>(yaml_error.at(0)));
+                }
+            }
+            throw std::runtime_error(yaml_error + " on line " + std::to_string(e.mark.line + 1) + " of \"" + dependency_file.string() + "\"");
+        }
+        catch (std::runtime_error const &e)
+        {
+            throw e;
+        }
+        catch (std::exception const &e)
+        {
+            throw std::runtime_error("Unable to parse dependency file of \"" + dependency_file.string() + "\"");
+        }
+    } while (!dependency_files.empty());
 }
 
 void structure_t::add_widget(widget_name_t const &name, widget_type_t const &type, widget_contents_t const &contents, widget_file_reference_t const file_reference)
@@ -407,7 +412,7 @@ void structure_t::validate_and_prune_hierarchy()
      * @param widget_yaml_contents The YAML content of the widget
      * @param widget_file The source file of the widget
      */
-    auto validate_references_iterative = [&](widget_t const &widget, YAML::Node const &widget_yaml_contents, std::filesystem::path const &widget_file)
+    auto const validate_references_iterative = [&](widget_t const &widget, YAML::Node const &widget_yaml_contents, std::filesystem::path const &widget_file)
     {
         std::vector<YAML::Node> widget_contents = {};
         widget_contents.push_back(widget_yaml_contents);
@@ -464,11 +469,9 @@ void structure_t::validate_and_prune_hierarchy()
                         case 0:
                             break;
                         case 1:
-                        {
                             if (tag != "?")
                                 throw std::runtime_error("Unexpected `" + tag + "` character prior to child object reference from `" + widget.name + "` to `" + object_name + "` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
                             break;
-                        }
                         default:
                         {
                             widget_type_t const object_type = m_widget_types.at(m_widgets.at(object_name));
@@ -569,63 +572,64 @@ void structure_t::validate_and_prune_hierarchy()
 
 void structure_t::number_references()
 {
-    if (m_widgets.size() == 0)
+    if (m_widgets.empty())
         return;
-    std::function<YAML::Node(widget_name_t const &, YAML::Node, std::filesystem::path const &)> number_references_recursive =
-        [&](widget_name_t const &widget_name, YAML::Node current_node, std::filesystem::path const &widget_file)
-    {
-        if (current_node.IsSequence())
-        {
-            for (std::size_t i = 0; i < current_node.size(); ++i)
-                current_node[i] = number_references_recursive(widget_name, current_node[i], widget_file);
-            return current_node;
-        }
-        if (!current_node.IsMap())
-            return current_node;
-
-        for (auto it = current_node.begin(); it != current_node.end(); ++it)
-        {
-            std::string key = it->first.as<std::string>();
-            YAML::Node value = it->second;
-
-            if (key == "object")
-            {
-                if (value.IsNull())
-                    throw std::runtime_error("No child object reference has been defined for `object` of `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(it->first)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `prune_references` method)
-                widget_name_t object_name;
-                try
-                {
-                    if (value.IsScalar())
-                    {
-                        object_name = to_lower(value.as<widget_name_t>());
-                        if (object_name.empty())
-                            throw YAML::BadConversion(value.Mark());
-                    }
-                    else
-                        throw YAML::BadConversion(value.Mark());
-                }
-                catch (YAML::BadConversion const &e)
-                {
-                    throw std::runtime_error("Child object reference of `" + widget_name + "` refers to a non-descriptive `object` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `prune_references` method)
-                }
-                auto const widget_it = m_widgets.find(object_name);
-                if (widget_it != m_widgets.end())
-                {
-                    current_node[key] = std::distance(m_widgets.begin(), widget_it); // Get the index
-                    debug(m_debug_stream, m_name, "Resolved reference to object `" + object_name + "` with index: " + std::to_string(current_node[key].as<int>()));
-                }
-                else
-                    throw std::runtime_error("An unexpected error occurred whilst handling a dangling child object reference for `" + object_name + "` of `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `prune_references` method)
-            }
-            else if (value.IsMap() || value.IsSequence())
-                current_node[key] = number_references_recursive(widget_name, value, widget_file);
-        }
-        return current_node;
-    };
-
     debug(m_debug_stream, m_name, "Updating references of objects for numeric positioning...");
+    size_t object_reference_identifier = 0;
     for (auto &pair : m_widget_contents)
-        pair.second = number_references_recursive(pair.first, pair.second, m_parsed_files.at(m_widget_files.at(pair.first)));
+    {
+        widget_name_t const &widget_name = pair.first;
+        std::filesystem::path const &widget_file = m_parsed_files.at(m_widget_files.at(widget_name));
+        debug(m_debug_stream, m_name, "Resolving references to object `" + widget_name + "` with index: " + std::to_string(object_reference_identifier++));
+        std::vector<YAML::Node> nested_properties;
+        nested_properties.push_back(pair.second);
+        while (!nested_properties.empty())
+        {
+            YAML::Node property = nested_properties.back();
+            nested_properties.pop_back();
+            if (property.IsSequence())
+            {
+                for (auto const &nested_property : property)
+                    nested_properties.push_back(nested_property);
+            }
+            else if (property.IsMap())
+            {
+                for (auto const &nested_property : property)
+                {
+                    std::string const key = nested_property.first.as<std::string>();
+                    YAML::Node const value = nested_property.second;
+                    if (key == "object")
+                    {
+                        if (value.IsNull())
+                            throw std::runtime_error("No child object reference has been defined for `object` of `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(nested_property.first)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `prune_references` method)
+                        widget_name_t object_name;
+                        try
+                        {
+                            if (value.IsScalar())
+                            {
+                                object_name = to_lower(value.as<widget_name_t>());
+                                if (object_name.empty())
+                                    throw YAML::BadConversion(value.Mark());
+                            }
+                            else
+                                throw YAML::BadConversion(value.Mark());
+                        }
+                        catch (YAML::BadConversion const &e)
+                        {
+                            throw std::runtime_error("Child object reference of `" + widget_name + "` refers to a non-descriptive `object` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `prune_references` method)
+                        }
+                        auto const widget_it = m_widgets.find(object_name);
+                        if (widget_it != m_widgets.end())
+                            property[key] = std::distance(m_widgets.begin(), widget_it);
+                        else
+                            throw std::runtime_error("An unexpected error occurred whilst handling a dangling child object reference for `" + object_name + "` of `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `prune_references` method)
+                    }
+                    else if (value.IsMap() || value.IsSequence())
+                        nested_properties.push_back(value);
+                }
+            }
+        }
+    }
 }
 
 std::string structure_t::build(bool const numeric_references)
@@ -639,10 +643,7 @@ std::string structure_t::build(bool const numeric_references)
     if (it != m_widgets.end())
     {
         if (numeric_references)
-        {
             main = std::distance(m_widgets.begin(), it); // Get index of 'main' widget
-            debug(m_debug_stream, m_name, "Resolved reference to object `main` with index: " + std::to_string(main));
-        }
     }
     else
         throw std::runtime_error("No `main` widget was found!");

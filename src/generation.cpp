@@ -491,8 +491,8 @@ void generation_t::build_all(bool const disallow_conflicts, bool const flatten_d
                       { return a.filename().string() < b.filename().string(); });
 
             // Check if output dependencies will conflict with each other when filenames are flattened
-            auto duplicate = std::adjacent_find(dependency_filenames.begin(), dependency_filenames.end(), [](std::filesystem::path const &a, std::filesystem::path const &b)
-                                                { return a.filename().string() == b.filename().string(); });
+            auto const duplicate = std::adjacent_find(dependency_filenames.begin(), dependency_filenames.end(), [](std::filesystem::path const &a, std::filesystem::path const &b)
+                                                      { return a.filename().string() == b.filename().string(); });
             if (duplicate != dependency_filenames.end())
                 throw std::runtime_error("Conflicting filename of \"" + duplicate->filename().string() + "\" between flattened dependencies");
         }
@@ -514,15 +514,15 @@ void generation_t::build_all(bool const disallow_conflicts, bool const flatten_d
         for (auto const &dependency : m_dependencies)
             dependencies_keys.push_back(dependency.first);
 
-        std::vector<std::filesystem::path> dependenciesAllowed = remove_descendant_paths(dependencies_keys);
-        std::vector<std::filesystem::path> dependenciesDisallowed = {};
+        std::vector<std::filesystem::path> dependencies_allowed = remove_descendant_paths(dependencies_keys);
+        std::vector<std::filesystem::path> dependencies_disallowed = {};
         for (auto const &dependency : m_dependencies)
         {
-            if (std::find(dependenciesAllowed.begin(), dependenciesAllowed.end(), dependency.first) == dependenciesAllowed.end())
-                dependenciesDisallowed.push_back(dependency.first);
+            if (std::find(dependencies_allowed.begin(), dependencies_allowed.end(), dependency.first) == dependencies_allowed.end())
+                dependencies_disallowed.push_back(dependency.first);
         }
-        for (auto const &disallowedDependency : dependenciesDisallowed)
-            m_dependencies.erase(disallowedDependency);
+        for (auto const &disallowed_dependency : dependencies_disallowed)
+            m_dependencies.erase(disallowed_dependency);
     }
 
     // Write GUI JavaScript file

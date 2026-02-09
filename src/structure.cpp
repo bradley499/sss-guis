@@ -601,7 +601,7 @@ void structure_t::number_references()
                     if (key == "object")
                     {
                         if (value.IsNull())
-                            throw std::runtime_error("No child object reference has been defined for `object` of `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(nested_property.first)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `prune_references` method)
+                            throw std::runtime_error("No child object reference has been defined for `object` of `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(nested_property.first)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `validate_and_prune_hierarchy` method)
                         widget_name_t object_name;
                         try
                         {
@@ -616,13 +616,13 @@ void structure_t::number_references()
                         }
                         catch (YAML::BadConversion const &e)
                         {
-                            throw std::runtime_error("Child object reference of `" + widget_name + "` refers to a non-descriptive `object` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `prune_references` method)
+                            throw std::runtime_error("Child object reference of `" + widget_name + "` refers to a non-descriptive `object` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `validate_and_prune_hierarchy` method)
                         }
                         auto const widget_it = m_widgets.find(object_name);
                         if (widget_it != m_widgets.end())
                             property[key] = std::distance(m_widgets.begin(), widget_it);
                         else
-                            throw std::runtime_error("An unexpected error occurred whilst handling a dangling child object reference for `" + object_name + "` of `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `prune_references` method)
+                            throw std::runtime_error("An unexpected error occurred whilst handling a dangling child object reference for `" + object_name + "` of `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `validate_and_prune_hierarchy` method)
                     }
                     else if (value.IsMap() || value.IsSequence())
                         nested_properties.push_back(value);

@@ -371,14 +371,14 @@ void structure_t::parse_file(std::filesystem::path const &file)
 
 void structure_t::add_widget(widget_name_t const &name, widget_type_t const &type, widget_contents_t const &contents, widget_file_reference_t const file_reference)
 {
-    int type_id = -1;
+    widget_type_identifier_t type_id = -1;
     auto const it = std::find(m_widget_types.begin(), m_widget_types.end(), type);
     if (it != m_widget_types.end())
         type_id = std::distance(m_widget_types.begin(), it);
     else
     {
         m_widget_types.push_back(type);
-        type_id = m_widget_types.size() - 1;
+        type_id = (m_widget_types.size() - 1);
     }
 
     if (m_widgets.count(name))
@@ -554,18 +554,18 @@ void structure_t::validate_and_prune_hierarchy()
     std::vector<widget_type_t> new_widget_types = {};
     widget_type_identifier_t current_new_type_identifier = 0;
 
-    for (std::size_t i = 0; i < m_widget_types.size(); ++i)
+    for (widget_type_identifier_t existing_type_identifier = 0; existing_type_identifier < static_cast<widget_type_identifier_t>(m_widget_types.size()); ++existing_type_identifier)
     {
-        if (type_occurrences.at(i) > 0)
+        if (type_occurrences.count(existing_type_identifier) && type_occurrences.at(existing_type_identifier) > 0)
         {
-            old_to_new_type_id_map[i] = current_new_type_identifier;
-            new_widget_types.push_back(std::move(m_widget_types[i]));
+            old_to_new_type_id_map.at(existing_type_identifier) = current_new_type_identifier;
+            new_widget_types.push_back(std::move(m_widget_types[existing_type_identifier]));
             current_new_type_identifier++;
         }
     }
 
     for (auto &pair : m_widgets)
-        pair.second = old_to_new_type_id_map[pair.second];
+        pair.second = old_to_new_type_id_map.at(pair.second);
 
     m_widget_types = std::move(new_widget_types);
 }

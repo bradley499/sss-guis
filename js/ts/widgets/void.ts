@@ -12,7 +12,7 @@ export class void_t extends widget_t {
         this.content.innerText;
         const shadowRoot = this.content.attachShadow({ "mode": "closed" });
         const noDisplayStyling: CSSStyleSheet = new CSSStyleSheet();
-        noDisplayStyling.replaceSync(":host{all:initial;display:none;}");
+        noDisplayStyling.replaceSync(":host{all:initial!important;display:block!important;visibility:hidden!important;}");
         shadowRoot.adoptedStyleSheets = [noDisplayStyling];
     };
     public configuration(_configuration: Object): void {

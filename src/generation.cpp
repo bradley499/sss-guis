@@ -1,7 +1,6 @@
 #include "dependencies.hpp"
 #include "generation.hpp"
 #include "guis.js.hpp" // Generated file
-#include "structure.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -36,9 +35,8 @@ namespace
      */
     inline bool is_descendant(std::filesystem::path const &parent, std::filesystem::path const &child)
     {
-        auto const [parent_iterator, child_iterator] = std::mismatch(parent.begin(), parent.end(), child.begin(), child.end());
-        // Descendant if we exhausted parent but NOT child
-        return (parent_iterator == parent.end() && child_iterator != child.end());
+        auto const relative_path = child.lexically_normal().lexically_relative(parent.lexically_normal());
+        return (!relative_path.empty() && relative_path.native()[0] != '.' && relative_path != ".");
     }
 
     /**
@@ -351,22 +349,8 @@ generation_t::~generation_t()
     m_dependencies.clear();
 }
 
-void generation_t::generate(generation_t::gui_t const &data, std::string const &guis_js_path, std::ostream const *debug_stream)
+void generation_t::generate(generation_t::gui_t const &data, std::string const &guis_js_path, path_register_dependency_t const &register_dependency_callback, std::ostream const *debug_stream)
 {
-    std::string structure;
-    try
-    {
-        // Generate structure
-        structure = structure_t(data.source_configuration_file, data.name, debug_stream).build(!data.debug);
-    }
-    catch (std::exception const &e)
-    {
-        throw std::runtime_error(data.name + ": " + e.what());
-    }
-
-    // Structure output filepath
-    std::string const structure_file = unique_filename("json");
-
     std::string const relative_adjustment = [&]
     {
         std::string parent_path;
@@ -374,6 +358,25 @@ void generation_t::generate(generation_t::gui_t const &data, std::string const &
             parent_path += "../";
         return parent_path;
     }();
+
+    path_register_dependency_t const register_dependency_callback_wrapper = [relative_adjustment, register_dependency_callback](std::filesystem::path const &file_path)
+    {
+        return relative_adjustment + register_dependency_callback(file_path);
+    };
+
+    std::string structure;
+    try
+    {
+        // Generate structure
+        structure = structure_t(data.source_configuration_file, data.name, debug_stream).build(register_dependency_callback_wrapper, !data.debug);
+    }
+    catch (std::exception const &e)
+    {
+        throw std::runtime_error(data.name + ": " + e.what());
+    }
+
+    // Structure output filepath
+    std::string const structure_file = unique_filename(".json");
 
     std::vector<std::string> modules = {};
     std::transform(data.module_files.begin(), data.module_files.end(), std::back_inserter(modules),
@@ -424,7 +427,7 @@ std::filesystem::path generation_t::unique_filename(std::string const &extension
     }
     while (true)
     {
-        std::string filename = std::to_string(std::rand()) + '.' + extension;
+        std::string const filename = std::to_string(std::rand()) + (extension.empty() ? "" : extension);
         bool unique = true;
         // Check against dependencies
         for (auto const &dependency : m_dependencies)
@@ -526,18 +529,55 @@ void generation_t::build_all(bool const disallow_conflicts, bool const flatten_d
     }
 
     // Write GUI JavaScript file
-    std::string guis_js_filename = unique_filename("js");
+    std::string guis_js_filename = unique_filename(".js");
     std::ofstream guis_js_stream(m_output_directory / guis_js_filename, std::ios::binary | std::ios::out);
     if (!guis_js_stream.is_open())
         throw std::runtime_error("Failed to create a file for writing output content to");
     guis_js_stream.write(reinterpret_cast<const char *>(sss_guis_js), sss_guis_js_len);
     guis_js_stream.close();
 
+    std::mutex register_dependency_mutex;
+
+    path_register_dependency_t const register_dependency = [&](std::filesystem::path const &file_path)
+    {
+        std::filesystem::path absolute_file_path = std::filesystem::absolute(file_path.lexically_normal());
+        if (!std::filesystem::exists(absolute_file_path))
+            throw std::runtime_error("No file(s) exists for dependency \"" + absolute_file_path.string() + "\"");
+
+        std::lock_guard<std::mutex> lock(register_dependency_mutex);
+
+        // If is already directly tracked
+        if (m_dependencies.count(absolute_file_path))
+        {
+            std::filesystem::path const existing_dependency_path = m_dependencies.at(absolute_file_path);
+            if (flatten_dependency_references)
+                return existing_dependency_path.filename();
+            else
+                return existing_dependency_path;
+        }
+        // If is already indirectly tracked
+        for (auto const &dependency : m_dependencies)
+        {
+            if (is_descendant(dependency.first, absolute_file_path))
+            {
+                auto const child_path = std::filesystem::proximate(absolute_file_path, dependency.first);
+                if (flatten_dependency_references)
+                    return (dependency.second.filename() / child_path);
+                else
+                    return (dependency.second / child_path);
+            }
+        }
+        // Dependency is not currently being tracked
+        std::filesystem::path dependency_file_path = unique_filename(absolute_file_path.extension());
+        m_dependencies[absolute_file_path] = dependency_file_path;
+        return dependency_file_path;
+    };
+
     // Parallel processing loop
-    std::vector<std::future<void>> futures;
+    std::vector<std::future<void>> futures = {};
     for (auto const &gui_data : m_guis)
-        futures.push_back(std::async(std::launch::async, [this, gui_data, guis_js_filename, debug_stream]()
-                                     { generate(gui_data, guis_js_filename, debug_stream); })); // Launch asynchronously
+        futures.push_back(std::async(std::launch::async, [&, gui_data, guis_js_filename, debug_stream]()
+                                     { generate(gui_data, guis_js_filename, register_dependency, debug_stream); })); // Launch asynchronously
 
     // Wait for all threads to complete
     for (auto &future : futures)

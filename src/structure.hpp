@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <string>
 #include <map>
 #include <vector>
@@ -9,6 +10,11 @@
 
 namespace sss::guis
 {
+    /**
+     * @brief Callback function to register a path as a dependency
+     */
+    using path_register_dependency_t = std::function<std::string(std::filesystem::path const &)>;
+
     class structure_t
     {
     private:
@@ -78,9 +84,10 @@ namespace sss::guis
          */
         void number_references();
         /**
-         * @brief Remove all unreferenced objects and validate object hierarchical structure
+         * @brief Remove all unreferenced objects and validate object hierarchical structure and dependencies
+         * @param path_register_dependency_callback Callback function to register a path as a dependency
          */
-        void validate_and_prune_hierarchy();
+        void validate_and_prune_hierarchy(path_register_dependency_t const &path_register_dependency_callback);
 
     public:
         /**
@@ -96,8 +103,9 @@ namespace sss::guis
         ~structure_t();
         /**
          * @brief Build JSON output
-         * @param debug_references Whether to convert object references to a numeric value
+         * @param path_register_dependency_callback Callback function to register a path as a dependency
+         * @param numeric_references Whether to convert object references to a numeric value
          */
-        std::string build(bool const numeric_references = true);
+        std::string build(path_register_dependency_t const &path_register_dependency_callback, bool const numeric_references = true);
     };
 }

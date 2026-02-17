@@ -388,7 +388,7 @@ void structure_t::add_widget(widget_name_t const &name, widget_type_t const &typ
     m_widget_files[name] = file_reference;
 }
 
-void structure_t::validate_and_prune_hierarchy()
+void structure_t::validate_and_prune_hierarchy(path_register_dependency_t const &path_register_dependency_callback)
 {
     std::unordered_set<widget_name_t> referenced_widgets = {};
 
@@ -464,22 +464,12 @@ void structure_t::validate_and_prune_hierarchy()
                         if (m_widgets.count(object_name) == 0)
                             throw std::runtime_error("Child object reference from `" + widget.name + "` to `" + object_name + "` does not relate to any known widgets - on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
                         widget_type_t const tag = value.Tag();
-                        switch (tag.size())
-                        {
-                        case 0:
-                            break;
-                        case 1:
-                            if (tag != "?")
-                                throw std::runtime_error("Unexpected `" + tag + "` character prior to child object reference from `" + widget.name + "` to `" + object_name + "` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
-                            break;
-                        default:
+                        if (tag.size() > 1)
                         {
                             widget_type_t const object_type = m_widget_types.at(m_widgets.at(object_name));
                             widget_type_t const object_type_tag = to_lower(tag.substr(1)); // Removes the tag handle
                             if (object_type != object_type_tag)
                                 throw std::runtime_error("Child object reference from `" + widget.name + "` to `" + object_name + "` is of type `" + object_type + "` which does not match the enforced type of `" + object_type_tag + "` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
-                            break;
-                        }
                         }
                         if (object_name == widget.name || std::find(widget.hierarchy.begin(), widget.hierarchy.end(), object_name) != widget.hierarchy.end())
                         {
@@ -504,8 +494,41 @@ void structure_t::validate_and_prune_hierarchy()
                             widget_hierarchies_to_traverse.push_back({object_name, next_widget_hierarchy});
                         }
                     }
-                    else if (value.IsMap() || value.IsSequence())
-                        widget_contents.push_back(value);
+                    else
+                    {
+                        widget_type_t const tag = value.Tag();
+                        if (tag == "!file")
+                        {
+                            try
+                            {
+                                if (value.IsScalar())
+                                {
+                                    std::string const file_path_string = value.as<widget_name_t>();
+                                    if (file_path_string.empty())
+                                        throw YAML::BadConversion(value.Mark());
+                                    std::filesystem::path file_path = std::filesystem::path(file_path_string);
+                                    if (file_path.is_relative())
+                                        file_path = widget_file.parent_path() / file_path;
+                                    std::string const dependency_file_path_string = path_register_dependency_callback(file_path);
+                                    std::string const dependency_file_name_string = std::filesystem::path(dependency_file_path_string).filename().string();
+                                    debug(m_debug_stream, m_name, "Adding referenced " + std::string(std::filesystem::is_directory(file_path) ? "directory" : "file") + " \"" + file_path.lexically_normal().string() + "\" as a dependency" + ((dependency_file_name_string != file_path.filename().string()) ? " named \"" + std::filesystem::path(dependency_file_path_string).filename().string() + "\"" : ""));
+                                    value = dependency_file_path_string;
+                                }
+                                else
+                                    throw YAML::BadConversion(value.Mark());
+                            }
+                            catch (YAML::BadConversion const &e)
+                            {
+                                throw std::runtime_error("Unable to add an (non-string) referenced dependency on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
+                            }
+                            catch (std::runtime_error const &e)
+                            {
+                                throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
+                            }
+                        }
+                        else if (value.IsMap() || value.IsSequence())
+                            widget_contents.push_back(value);
+                    }
                 }
             }
         }
@@ -632,9 +655,9 @@ void structure_t::number_references()
     }
 }
 
-std::string structure_t::build(bool const numeric_references)
+std::string structure_t::build(path_register_dependency_t const &path_register_dependency_callback, bool const numeric_references)
 {
-    validate_and_prune_hierarchy();
+    validate_and_prune_hierarchy(path_register_dependency_callback);
     if (numeric_references)
         number_references();
 

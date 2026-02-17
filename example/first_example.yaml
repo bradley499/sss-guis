@@ -7,7 +7,7 @@ main:
   rows: [0, 1]
   columns: [1]
   items:
-    - object: example_heading
+    - object: !banner example_heading
     - object: example_container
 
 example_heading:

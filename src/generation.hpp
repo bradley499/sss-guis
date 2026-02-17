@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "structure.hpp"
 
 namespace sss::guis
 {
@@ -64,12 +65,13 @@ namespace sss::guis
          * @brief Generates a GUI
          * @param gui The GUI to generate
          * @param guis_js_path The path to the main JavaScript file
+         * @param register_dependency_callback Callback function to register a path as a dependency
          * @param debug_stream A `std::ofstream` to write debug outputs to
          */
-        void generate(gui_t const &gui, std::string const &guis_js_path, std::ostream const *debug_stream = nullptr);
+        void generate(gui_t const &gui, std::string const &guis_js_path, path_register_dependency_t const &register_dependency_callback, std::ostream const *debug_stream = nullptr);
         /**
          * @brief Generate a unique filename against the dependencies with a specified extension
-         * @param extension The extension to use for the unique file
+         * @param extension The extension to use for the unique file (expected to begin with `.`)
          * @return Unique file (with extension)
          */
         std::filesystem::path unique_filename(std::string const &extension);

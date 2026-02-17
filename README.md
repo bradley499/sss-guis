@@ -22,7 +22,7 @@ The initial configuration file expects a YAML sequence (list) to be accessible u
 |`config`|`string`|The location of the configuration file that holds the widget configurations.|
 |`stylesheet`|`string`|The location of the stylesheet to be applied to the GUI.|
 |`modules`|Sequence (list) of `string`s|*Optional* - A list of modules that are loaded into the GUI. Wildcards are allowed.|
-|`dependencies`|Sequence (list) of `string`s|*Optional* - Static unmanaged dependencies that the GUI can use (such as multimedia). Wildcards are allowed.|
+|`dependencies`|Sequence (list) of `string`s|*Optional* - Static unmanaged dependencies. Wildcards are allowed.|
 |`debug`|`boolean`|*Optional* - Wether to leave the names of widgets in the output files, otherwise it represents each widget as a numeric value.|
 
 An example structure could look like the following:
@@ -54,12 +54,15 @@ The core principle is that a widget needs to declare it's `type` in order for it
 
 If a widget requires a child widget (defined elsewhere), then it must mention its name via an `object` reference property. Although all widgets define their own `type`, an optional strict check can be enforced by parent widgets to ensure that an `object` reference is of an expected `type`, this is done by specifying the `type` prepended with an exclamation mark (`!`) prior to the name - for example: `object: !name_of_type example_widget` - and if the referenced `object` is not of the `type` defined, the check will fail.
 
+If a property requires a file or directory (stored within the filesystem) to be accessible to the GUI, then it should directly tag its value as a `file`. This will add the referenced filepath as a dependency - with an updated relative reference to its new location - within the generated output directory, often with different uniquely generated filenames. Tagging a value as a `file` is done by specifying the keyword prepended with an exclamation mark (`!`) prior to the path - for example: `source: !file example_file` - and if the referenced filepath cannot be resolved, the check will fail. Wildcards are **not** allowed.
+
 ##### Example widget configuration
 ```yaml
 example_widget: # Name of widget
   type: name_of_type
   complex_properties:
     example: true
+    source: !file example_file
   items:
     - object: !name_of_type another_widget
     - object: yet_another_widget

@@ -14,6 +14,11 @@ using namespace sss::guis;
 namespace
 {
     /**
+     * @brief YAML tag for a file or directory to be registered as a dependency
+     */
+    std::string const FILE_TAG = "!file";
+
+    /**
      * @brief Write output to debug output stream
      * @param debug_stream Pointer to a output stream (if nullptr then function will do nothing)
      * @param message Message to be written to debug output
@@ -101,6 +106,9 @@ namespace
         nlohmann::json json_value;
         if (yaml_node.IsScalar())
         {
+            bool attempt_string = false;
+            if (yaml_node.Tag() == FILE_TAG)
+                goto YAML_TO_JSON_STRING;
             try
             {
                 json_value = yaml_node.as<int>();
@@ -119,15 +127,20 @@ namespace
                     }
                     catch (YAML::BadConversion const &e)
                     {
-                        try
-                        {
-                            json_value = yaml_node.as<std::string>();
-                        }
-                        catch (YAML::BadConversion const &e)
-                        {
-                            throw std::runtime_error("Failed to parse a YAML property");
-                        }
+                        attempt_string = true;
                     }
+                }
+            }
+            if (attempt_string)
+            {
+YAML_TO_JSON_STRING:
+                try
+                {
+                    json_value = yaml_node.as<std::string>();
+                }
+                catch (YAML::BadConversion const &e)
+                {
+                    throw std::runtime_error("Failed to parse a YAML property");
                 }
             }
         }
@@ -496,8 +509,7 @@ void structure_t::validate_and_prune_hierarchy(path_register_dependency_t const 
                     }
                     else
                     {
-                        widget_type_t const tag = value.Tag();
-                        if (tag == "!file")
+                        if (value.Tag() == FILE_TAG)
                         {
                             try
                             {

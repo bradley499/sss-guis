@@ -34,6 +34,26 @@ export function structureWidgetExists(identifier: widgetIdentifier_t): boolean {
     return structure_t.widgetExists(identifier);
 }
 /**
+ * The event type for successful structure rendering or error
+ * @returns {string} Event type
+ */
+export function structureLoadEventType(): string {
+    return "structureLoadEvent";
+};
+/**
+ * The event emitted on the successful completion of structure rendering or on error
+ */
+export interface structureLoadEvent {
+    /**
+     * Whether the structure loaded successfully
+     */
+    success: boolean;
+    /**
+     * Message to be set if an error occurred
+     */
+    message?: string;
+};
+/**
  * Exports functions to window
  * @internal
  */
@@ -41,6 +61,7 @@ export function exportToWindow(): void {
     (window as any).structureDeclareWidget = structureDeclareWidget;
     (window as any).structureWidget = structureWidget;
     (window as any).structureWidgetExists = structureWidgetExists;
+    (window as any).structureLoadEventType = structureLoadEventType;
     (window as any).widget_t = widget_t;
     (window as any).loadStylesheet = loadStylesheet;
     (window as any).loadModule = loadModule;

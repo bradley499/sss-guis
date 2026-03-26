@@ -6,7 +6,7 @@ import { structure_t } from "./structure";
 import { widget_t } from "./widgets/widget";
 import { loadStylesheet } from "./resources/stylesheet";
 import { registerCoreWidgets } from "./coreWidgets";
-import { exportToWindow } from "./exported";
+import { exportToWindow, structureLoadEvent, structureLoadEventType } from "./exported";
 import { loadModule, loadModules } from "./resources/module";
 
 // @internal
@@ -59,7 +59,12 @@ async function main(): Promise<void> {
                         document.documentElement.replaceChild(document.createElement("body"), splashContainer);
                         document.body.appendChild(mainElement);
                         document.title = gui_data!.name.trim() + " | SSS";
-                        document.dispatchEvent(new Event("load"));
+                        document.dispatchEvent(new CustomEvent<structureLoadEvent>(structureLoadEventType(), {
+                            detail: {
+                                success: true,
+                                message: undefined
+                            }
+                        }));
                         resolve();
                     }).catch((error) => {
                         reject(error);
@@ -71,6 +76,12 @@ async function main(): Promise<void> {
         }
     }).catch((error: any) => {
         setError(error as string);
+        document.dispatchEvent(new CustomEvent<structureLoadEvent>(structureLoadEventType(), {
+            detail: {
+                success: false,
+                message: (error as string),
+            }
+        }));
     });
 }
 

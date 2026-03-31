@@ -23,6 +23,18 @@ export abstract class widget_t {
         this.content.className = type;
     }
     /**
+     * Configure a widget's name
+     * @param {string} name Name of widget
+     * @internal
+     */
+    public configurationName(name: string): void {
+        const originalName: (string | null) = this.content.getAttribute("name");
+        if (originalName !== null) {
+            console.warn(`The widget named "${originalName}" is being renamed to "${name}"`);
+        }
+        this.content.setAttribute("name", name);
+    }
+    /**
      * @abstract Configure a widget
      * @param {Object} configuration Contents of widget
      */

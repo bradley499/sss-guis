@@ -44,6 +44,7 @@ namespace
                        { return std::tolower(character); });
         return string;
     }
+
     /**
      * @brief Validates whether a widget's name is value
      * @param name The name of the widget to validate
@@ -60,6 +61,7 @@ namespace
         if (name == "null")
             throw std::runtime_error("Cannot name a widget `" + name + "` as that name is not allowed");
     }
+
     /**
      * @brief Validates whether a widget's type is value
      * @param type The type of the widget to validate
@@ -73,6 +75,7 @@ namespace
         if (type.find_first_not_of(type_allowed_characters) != std::string_view::npos)
             throw std::runtime_error("Unable to declare a widget is of type `" + type + "` as it contains invalid characters");
     }
+
     /**
      * @brief Get the line number of a YAML Node object
      * @param node The YAML Node object to get the line number from
@@ -169,16 +172,16 @@ YAML_TO_JSON_STRING:
     }
 }
 
-structure_t::structure_t(std::string const &file, std::string const &name, std::ostream const *debug_stream)
+structure_t::structure_t(std::string const &name, std::ostream const *debug_stream)
     : m_widgets({}),
       m_widget_types({}),
       m_widget_contents({}),
+      m_widget_contents_defaults({}),
       m_widget_files({}),
       m_parsed_files({}),
       m_name(name),
       m_debug_stream(const_cast<std::ostream *>(debug_stream))
 {
-    parse_file(std::filesystem::absolute(file).lexically_normal());
 }
 
 structure_t::~structure_t()
@@ -190,9 +193,43 @@ structure_t::~structure_t()
     m_parsed_files.clear();
 }
 
-void structure_t::parse_file(std::filesystem::path const &file)
+void structure_t::populate_widget_defaults(widget_contents_t const &widget_defaults)
 {
-    std::vector<std::filesystem::path> dependency_files({file});
+    if (!widget_defaults.IsDefined())
+        return;
+    if (!widget_defaults.IsMap())
+        throw std::runtime_error("Unable to parse widget defaults since a mappable structure is expected on line " + std::to_string(yaml_node_line_number(widget_defaults))); // Should never be thrown (expected to be caught prior to construction of `structure_t` class)
+    for (auto const &widget_default : widget_defaults)
+    {
+        widget_type_t widget_type;
+        try
+        {
+            widget_type = to_lower(widget_default.first.as<widget_type_t>());
+            validate_widget_type(widget_type);
+        }
+        catch (YAML::Exception const &e)
+        {
+            throw std::runtime_error("Failed to parse the `type` (string) of configured widget default on line " + std::to_string(yaml_node_line_number(widget_default)));
+        }
+        catch (std::runtime_error const &e)
+        {
+            throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(widget_default)));
+        }
+        YAML::Node const type = widget_default.second["type"];
+        if (type.IsDefined())
+        {
+            if (!type.IsScalar() || (type.IsScalar() && type.as<widget_type_t>() != widget_type))
+                throw std::runtime_error("The widget default for the type `" + widget_type + "` has a conflicting yet redundant `type` definition - declared on line " + std::to_string(yaml_node_line_number(type)));
+            else
+                throw std::runtime_error("The widget default for the type `" + widget_type + "` has a redundant `type` definition - declared on line " + std::to_string(yaml_node_line_number(type)));
+        }
+        m_widget_contents_defaults.insert({widget_type, widget_default.second});
+    }
+}
+
+void structure_t::parse_file(std::filesystem::path const &configuration_file)
+{
+    std::vector<std::filesystem::path> dependency_files({configuration_file});
     do
     {
         std::filesystem::path const dependency_file = dependency_files.back();
@@ -271,11 +308,11 @@ void structure_t::parse_file(std::filesystem::path const &file)
                     widget_content_node.remove("type");
                     try
                     {
-                        add_widget(widget_name, widget_type, widget_content_node, static_cast<widget_file_reference_t>(m_parsed_files.size() - 1));
+                        add_widget(widget_name, widget_type, widget_entry.first, widget_content_node, static_cast<widget_file_reference_t>(m_parsed_files.size() - 1));
                     }
                     catch (std::runtime_error const &e)
                     {
-                        throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + dependency_file.string() + "\"");
+                        throw std::runtime_error(std::string(e.what()) + " of \"" + dependency_file.string() + "\"");
                     }
                 }
 
@@ -382,7 +419,7 @@ void structure_t::parse_file(std::filesystem::path const &file)
     } while (!dependency_files.empty());
 }
 
-void structure_t::add_widget(widget_name_t const &name, widget_type_t const &type, widget_contents_t const &contents, widget_file_reference_t const file_reference)
+void structure_t::add_widget(widget_name_t const &name, widget_type_t const &type, YAML::Node const &widget_base_node, widget_contents_t const &contents, widget_file_reference_t const file_reference)
 {
     widget_type_identifier_t type_id = -1;
     auto const it = std::find(m_widget_types.begin(), m_widget_types.end(), type);
@@ -395,9 +432,53 @@ void structure_t::add_widget(widget_name_t const &name, widget_type_t const &typ
     }
 
     if (m_widgets.count(name))
-        throw std::runtime_error("Duplicate definitions of the widget `" + name + "`");
+        throw std::runtime_error("Duplicate definitions of the widget `" + name + "` on line " + std::to_string(yaml_node_line_number(widget_base_node)));
+    if (m_widget_contents_defaults.count(type))
+    {
+        YAML::Node generated_output = YAML::Clone(m_widget_contents_defaults.at(type));
+        struct nodeComparison_t
+        {
+            YAML::Node generated_node;
+            YAML::Node defined_node;
+        };
+
+        std::vector<nodeComparison_t> processing_stack = {};
+        processing_stack.push_back({generated_output, contents});
+
+        while (!processing_stack.empty())
+        {
+            nodeComparison_t task = processing_stack.back();
+            processing_stack.pop_back();
+
+            YAML::Node &generated_node = task.generated_node;
+            YAML::Node const &defined_node = task.defined_node;
+
+            if (generated_node.IsDefined() && !generated_node.IsNull() && generated_node.Type() != defined_node.Type() && !defined_node.IsNull())
+                throw std::runtime_error("Structural conflict between widget `defaults` for the widget `" + name + "` of type `" + type + "` on line " + std::to_string(yaml_node_line_number(defined_node)));
+
+            if (defined_node.IsMap())
+            {
+                for (auto it = defined_node.begin(); it != defined_node.end(); ++it)
+                {
+                    std::string const key = it->first.as<std::string>();
+                    YAML::Node const source_value = it->second;
+                    if (generated_node[key])
+                        processing_stack.push_back({generated_node[key], source_value});
+                    else
+                        generated_node[key] = YAML::Clone(source_value);
+                }
+            }
+            else
+            {
+                if (!defined_node.IsNull())
+                    generated_node = YAML::Clone(defined_node); // Override default
+            }
+        }
+        m_widget_contents[name] = generated_output;
+    }
+    else
+        m_widget_contents[name] = contents;
     m_widgets[name] = type_id;
-    m_widget_contents[name] = contents;
     m_widget_files[name] = file_reference;
 }
 

@@ -2,8 +2,10 @@
 
 #include <filesystem>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
+#include <yaml-cpp/yaml.h>
 #include "structure.hpp"
 
 namespace sss::guis
@@ -44,6 +46,10 @@ namespace sss::guis
              * @brief Paths of modules
              */
             std::vector<std::string> module_files;
+            /**
+             * @brief A map of YAML nodes consisting of the default values for defined widget type
+             */
+            std::optional<YAML::Node> widget_defaults;
         };
         /**
          * @brief Collection of all GUI's data
@@ -57,6 +63,10 @@ namespace sss::guis
          * @brief The output directory for all generated file
          */
         std::filesystem::path const m_configuration_directory;
+        /**
+         * @brief The path to the configuration file
+         */
+        std::filesystem::path const m_configuration_file;
         /**
          * @brief The source configuration file to find structures in
          */

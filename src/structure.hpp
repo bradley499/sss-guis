@@ -49,7 +49,11 @@ namespace sss::guis
         /**
          * @brief Collection of widget names and their contents
          */
-        std::map<widget_name_t, YAML::Node> m_widget_contents;
+        std::map<widget_name_t, widget_contents_t> m_widget_contents;
+        /**
+         * @brief Collection of widget types and their default contents
+         */
+        std::map<widget_type_t, widget_contents_t> m_widget_contents_defaults;
         /**
          * @brief Collection of widget names and their declaration file
          */
@@ -66,19 +70,14 @@ namespace sss::guis
          * @brief Output stream for debug messages
          */
         std::ostream *m_debug_stream;
-
-        /**
-         * @brief Parse a YAML file, handling dependencies and widgets
-         * @param file The YAML file to parse
-         */
-        void parse_file(std::filesystem::path const &file);
         /**
          * @brief Add a widget reference
          * @param name The name of the widget
          * @param type The type of the widget
          * @param contents The remaining contents of the widget
+         * @param file_reference The reference to the file of the widget's definition
          */
-        void add_widget(widget_name_t const &name, widget_type_t const &type, widget_contents_t const &contents, widget_file_reference_t const file_reference);
+        void add_widget(widget_name_t const &name, widget_type_t const &type, YAML::Node const &widget_base_node, widget_contents_t const &contents, widget_file_reference_t const file_reference);
         /**
          * @brief Convert object references to numerical references
          */
@@ -92,15 +91,24 @@ namespace sss::guis
     public:
         /**
          * @brief Construct a structure parser object that parsers YAML files into a JSON object
-         * @param configuration_file The source configuration file to start structuring from
          * @param name The name of the structure (only used for debug output)
          * @param debug_stream A `std::ofstream` to write debug outputs to
          */
-        structure_t(std::string const &configuration_file, std::string const &name, std::ostream const *debug_stream = nullptr);
+        structure_t(std::string const &name, std::ostream const *debug_stream = nullptr);
         /**
          * @brief Deconstructor
          */
         ~structure_t();
+        /**
+         * @brief Populate widgets with default properties
+         * @param widget_defaults A collection of default values for widgets of defined types
+         */
+        void populate_widget_defaults(widget_contents_t const &widget_defaults);
+        /**
+         * @brief Parse a YAML file, handling dependencies and widgets
+         * @param configuration_file The source configuration file to start structuring from
+         */
+        void parse_file(std::filesystem::path const &configuration_file);
         /**
          * @brief Build JSON output
          * @param path_register_dependency_callback Callback function to register a path as a dependency

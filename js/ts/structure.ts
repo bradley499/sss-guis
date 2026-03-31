@@ -132,6 +132,7 @@ export abstract class structure_t {
             throw new Error(`Unable to create widget of "${type}" which is an unknown widget type`);
         }
         let widget: widget_t = this.widgetDeclarations[type]();
+        widget.configurationName(identifier.toString());
         // @ts-ignore - to allow either a number or a string to be an index
         widget.configuration(this.structure.widgets[identifier][widgetData_t.widgetDataConfiguration] || {});
         return widget;

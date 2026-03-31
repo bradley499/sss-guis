@@ -164,6 +164,7 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
     : m_guis({}),
       m_dependencies({}),
       m_configuration_directory(std::filesystem::absolute(configuration_file.lexically_normal()).parent_path()),
+      m_configuration_file(configuration_file),
       m_output_directory(std::filesystem::absolute(output_directory.lexically_normal()))
 {
     std::vector<YAML::Node> gui_nodes = {};
@@ -332,6 +333,16 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
             else if (dependencies.Type() != YAML::NodeType::Null)
                 throw std::runtime_error("Unable to parse `dependencies` since a list is expected on line " + std::to_string(yaml_node_line_number(dependencies)) + " of \"" + configuration_file.string() + "\"");
         }
+
+        // Check whether widget defaults are listed
+        YAML::Node const widget_defaults = gui_node["defaults"];
+        if (widget_defaults.IsDefined())
+        {
+            // Expect a list of dependencies
+            if (!widget_defaults.IsMap())
+                throw std::runtime_error("Unable to parse `defaults` since a mappable structure is expected on line " + std::to_string(yaml_node_line_number(widget_defaults)) + " of \"" + configuration_file.string() + "\"");
+            current_gui_data.widget_defaults = widget_defaults;
+        }
         m_guis.push_back(current_gui_data); // Add to the collection
     }
     if (!std::filesystem::exists(m_output_directory))
@@ -368,7 +379,20 @@ void generation_t::generate(generation_t::gui_t const &data, std::string const &
     try
     {
         // Generate structure
-        structure = structure_t(data.source_configuration_file, data.name, debug_stream).build(register_dependency_callback_wrapper, !data.debug);
+        structure_t structure_parser(data.name, debug_stream);
+        if (data.widget_defaults.has_value())
+        {
+            try
+            {
+                structure_parser.populate_widget_defaults(data.widget_defaults.value());
+            }
+            catch (std::runtime_error const &e)
+            {
+                throw std::runtime_error(std::string(e.what()) + " of \"" + m_configuration_file.string() + "\"");
+            }
+        }
+        structure_parser.parse_file(std::filesystem::absolute(data.source_configuration_file).lexically_normal());
+        structure = structure_parser.build(register_dependency_callback_wrapper, !data.debug);
     }
     catch (std::exception const &e)
     {

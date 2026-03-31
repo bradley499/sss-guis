@@ -24,6 +24,7 @@ The initial configuration file expects a YAML sequence (list) to be accessible u
 |`modules`|Sequence (list) of `string`s|*Optional* - A list of modules that are loaded into the GUI. Wildcards are allowed.|
 |`dependencies`|Sequence (list) of `string`s|*Optional* - Static unmanaged dependencies. Wildcards are allowed.|
 |`debug`|`boolean`|*Optional* - Wether to leave the names of widgets in the output files, otherwise it represents each widget as a numeric value.|
+|`defaults`|Map of complex widget structures|*Optional* - Default values for widgets.|
 
 An example structure could look like the following:
 ```yaml
@@ -36,9 +37,15 @@ guis:
    dependencies:
     - "example_dependency"
    debug: false
+   defaults:
+     example_widget_type:
+       example: property
+       property: example
 ```
 
 The `config` property will be used to load the main widget configuration file associated with the specific GUI.
+
+The `defaults` map allows you to define default [Widget Configurations](#widget-configurations) for specific widget types; reducing the need to repeat common values. The top levels keys within the `defaults` map represent the `type` of the widget. If a specific widget defines a property already listed in `defaults`, its local value will **override** the default.
 
 ### Widget configuration files
 Widget configuration files consist of descriptive structures used to define widgets, as well as *optional* links to additional `dependencies` defined in that file - as a sequence (list) of `string`s consisting of locations for additional configuration files - which will all be parsed resulting in additional widgets available to reference. This means that the `dependencies` keyword is reserved and widgets **cannot** be named it.

@@ -16,6 +16,10 @@ find_package(yaml-cpp REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(Threads REQUIRED)
 
+if (NOT TARGET yaml-cpp::yaml-cpp AND TARGET yaml-cpp)
+    add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
+endif()
+
 add_subdirectory(js EXCLUDE_FROM_ALL)
 
 set(SSS_GUIS_DECLARATION_HEADER ${SSS-GUIS-DECLARATION-HEADER} CACHE INTERNAL "")

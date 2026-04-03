@@ -4,16 +4,17 @@
         "forceConsistentCasingInFileNames": true,
         "declaration": true,
         "declarationDir": "./dist/types",
-        "emitDeclarationOnly": true,
+        "emitDeclarationOnly": false,
         "stripInternal": true,
         "noImplicitAny": true,
         "target": "es2017",
         "module": "es2015",
         "lib": [
-            "es2017",
-            "DOM"
+            "es2019",
+            "DOM",
+            "DOM.Iterable"
         ],
-        "moduleResolution": "bundler",
+        "moduleResolution": "node",
         "esModuleInterop": true,
         "strict": true,
         "alwaysStrict": true,

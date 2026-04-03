@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 set(PROJECT_NAME sss-guis)
 
-project(${PROJECT_NAME} LANGUAGES CXX VERSION 0.7.1)
+project(${PROJECT_NAME} LANGUAGES CXX VERSION 0.8.0)
 
 set(EXECUTABLE_NAME ${PROJECT_NAME}_executable)
 set(LIBRARY_NAME ${PROJECT_NAME}_library)
@@ -15,6 +15,10 @@ set(CMAKE_SKIP_BUILD_RPATH FALSE)
 find_package(yaml-cpp REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(Threads REQUIRED)
+
+if (NOT TARGET yaml-cpp::yaml-cpp AND TARGET yaml-cpp)
+    add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
+endif()
 
 add_subdirectory(js EXCLUDE_FROM_ALL)
 

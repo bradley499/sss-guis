@@ -2,9 +2,9 @@ import { alert } from "./modals/alert";
 import { confirm } from "./modals/confirm";
 import { dialog } from "./modals/dialog";
 import { loadModule } from "./resources/module";
-import { loadResource, multimediaResource_t } from "./resources/resource";
+import { loadResource, type multimediaResource_t } from "./resources/resource";
 import { loadStylesheet } from "./resources/stylesheet";
-import { structure_t, widgetIdentifier_t } from "./structure";
+import { structure_t, type widgetIdentifier_t } from "./structure";
 import { widget_t } from "./widgets/widget";
 
 export { alert, confirm, dialog, loadModule, loadResource, multimediaResource_t, loadStylesheet, widget_t, widgetIdentifier_t};

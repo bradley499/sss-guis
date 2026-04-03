@@ -22,7 +22,7 @@ add_custom_target(
 )
 
 message("-- sss-guis: Installing npm dependencies")
-execute_process(COMMAND npm i
+execute_process(COMMAND npm install --no-engine-strict --loglevel=error --no-audit --no-fund
                 WORKING_DIRECTORY "${WORKING_DIRECTORY_LOCATION}"
                 RESULT_VARIABLE npm_install_result
                 OUTPUT_VARIABLE npm_install_output

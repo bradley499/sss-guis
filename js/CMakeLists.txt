@@ -38,21 +38,25 @@ set(GENERATED_INCLUDE_DIRECTORY "${WORKING_DIRECTORY_LOCATION}/dist/include")
 set(GENERATED_HEADER "${GENERATED_INCLUDE_DIRECTORY}/guis.js.hpp")
 set(TEMP_HEADER "${CMAKE_CURRENT_BINARY_DIR}/guis.js.hpp.temp")
 
+set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
+    "${GENERATED_JS}"
+    "${GENERATED_DECLARATION}"
+    "${GENERATED_INCLUDE_DIRECTORY}"
+)
+
 add_custom_target(
     sss-guis_js_bundle
     ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}" "${WORKING_DIRECTORY_LOCATION}"
     COMMAND npm run build
     COMMAND ${CMAKE_COMMAND} -E make_directory "${GENERATED_INCLUDE_DIRECTORY}/"
-    COMMAND ${CMAKE_COMMAND} -E copy "${GENERATED_JS}" "${WORKING_DIRECTORY_LOCATION}/dist/${PROJECT_NAME}"
-    COMMAND ${CMAKE_COMMAND} -E chdir "${WORKING_DIRECTORY_LOCATION}/dist" xxd -i "${PROJECT_NAME}" "${TEMP_HEADER}"
+    COMMAND bash -c "set -e; set -o pipefail; echo 'unsigned char sss_guis_js[] = {' > ${TEMP_HEADER}; od -v -t x1 -An ${GENERATED_JS} | sed 's/[[:space:]]*\\([0-9a-f]\\{2\\}\\)/0x\\1, /g' >> ${TEMP_HEADER}; sed -i '$ s/, $/};/' ${TEMP_HEADER}; echo -e '\\nunsigned int sss_guis_js_len = sizeof(sss_guis_js);' >> ${TEMP_HEADER}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${TEMP_HEADER}" "${GENERATED_HEADER}"
-    COMMAND ${CMAKE_COMMAND} -E remove "${TEMP_HEADER}" "${WORKING_DIRECTORY_LOCATION}/dist/${PROJECT_NAME}"
+    COMMAND ${CMAKE_COMMAND} -E remove "${TEMP_HEADER}"
     WORKING_DIRECTORY "${WORKING_DIRECTORY_LOCATION}"
     COMMENT "Generating sss-guis JavaScript bundle"
     VERBATIM
 )
-
 
 set_property(SOURCE ${GENERATED_HEADER} PROPERTY GENERATED TRUE)
 set_property(SOURCE ${GENERATED_DECLARATION} PROPERTY GENERATED TRUE)

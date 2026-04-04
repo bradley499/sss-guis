@@ -24,6 +24,7 @@ async function main(): Promise<void> {
     splashStatus.innerText = "Loading...";
     const setError = (error: string): void => {
         splashStatus.innerText = error;
+        splashStatus.classList.add("error")
         document.title = "Error | SSS";
     };
     splashContent.appendChild(splashHeading);
@@ -36,7 +37,7 @@ async function main(): Promise<void> {
         try {
             gui_data = new gui_t();
         } catch (error: any) {
-            reject(error);
+            reject(error.message);
         }
         exportToWindow();
         try {
@@ -67,19 +68,21 @@ async function main(): Promise<void> {
                         }));
                         resolve();
                     }).catch((error) => {
-                        reject(error);
+                        reject(error.message);
                     });
                 }
-            })
+            }).catch((error: any) => {
+                reject((error instanceof Error) ? error.message : error);
+            });
         } catch (error: any) {
             reject(error);
         }
-    }).catch((error: any) => {
-        setError(error as string);
+    }).catch((error: string) => {
+        setError(error);
         document.dispatchEvent(new CustomEvent<structureLoadEvent>(structureLoadEventType(), {
             detail: {
                 success: false,
-                message: (error as string),
+                message: error,
             }
         }));
     });

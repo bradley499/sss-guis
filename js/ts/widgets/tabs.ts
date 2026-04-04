@@ -30,26 +30,26 @@ export class tabs_t extends widget_t {
     public configuration(configuration: Object): void {
         if (!this.configurationHas(configuration, "items") ||
             !Array.isArray((configuration as any).items)) {
-            throw new Error("A tabs widget is missing `items`");
+            this.raiseError("A tabs widget is missing `items`");
         }
         ((configuration as any).items as Object[]).forEach((item: any) => {
             if (!this.configurationHas(item, "name")) {
-                throw new Error("A tab name is expected");
+                this.raiseError("A tab `name` is expected");
             }
             if (!(typeof item.name === "string" || typeof item.name === "number")) {
-                throw new Error("A tab name needs to be either a string or a number");
+                this.raiseError("A tab `name` needs to be either a string or a number");
             }
             const tabName: string = item.name.toString();
             if (tabName in this.tabs) {
-                throw new Error(`Another tab exists with the name of "${tabName}" within a tab widget`);
+                this.raiseError(`Another tab exists with the name of "${tabName}" within a tab widget`);
             }
             if (!this.configurationHas(item, "object")) {
-                throw new Error(`Tab "${tabName}" has no reference to an object`);
+                this.raiseError(`Tab "${tabName}" has no reference to an \`object\``);
             }
             this.tabs[tabName] = structure_t.widget(item.object);
         });
         if (Object.keys(this.tabs).length == 0) {
-            throw new Error("A tabs widget is missing `items`");
+            this.raiseError("A tabs widget is missing `items`");
         }
         if (this.configurationHas(configuration, "position")) {
             do {
@@ -63,11 +63,11 @@ export class tabs_t extends widget_t {
                             this.position = position;
                             break;
                         default:
-                            throw new Error(`"${position}" is not a valid position for a collection of tabs`);
+                            this.raiseError(`"${position}" is not a valid position for a collection of tabs`);
                     }
                     break;
                 }
-                throw new Error("The `position` for a collection of tabs must be a string");
+                this.raiseError("The `position` for a collection of tabs must be a string");
             } while (false);
         }
         this.content.setAttribute("position", this.position);

@@ -4,7 +4,6 @@
   "scripts": {
     "build": "node build.js"
   },
-  "description": "SSS GUI",
   "devDependencies": {
     "@typescript/lib-dom": "npm:@types/web",
     "esbuild": "0.19.12",

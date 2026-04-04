@@ -13,9 +13,9 @@ jobs:
           fetch-depth: 0
       - name: Verify version has incremented
         run: |
-          NEW=$(grep -i "project(" CMakeLists.txt | grep -oP '(?<=VERSION )[\d.]+' | tr -d '\r\n ')
+          NEW=$(sed -zEn 's/.*project\([^)]*VERSION\s+([0-9.]+).*/\1/p' CMakeLists.txt)
           git checkout origin/main -- CMakeLists.txt
-          OLD=$(grep -i "project(" CMakeLists.txt | grep -oP '(?<=VERSION )[\d.]+' | tr -d '\r\n ')
+          OLD=$(sed -zEn 's/.*project\([^)]*VERSION\s+([0-9.]+).*/\1/p' CMakeLists.txt)
           echo "Comparing $NEW to $OLD..."
           if [ "$NEW" = "$OLD" ]; then
             echo "::error::Version has not changed from v$NEW. Please increment CMakeLists.txt."

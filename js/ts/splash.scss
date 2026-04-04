@@ -27,5 +27,8 @@ div {
         margin: auto;
         font-family: monospace;
         color: darkslategray;
+        &.error {
+            color: red;
+        }
     }
 }

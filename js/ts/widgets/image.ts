@@ -20,7 +20,7 @@ export class image_t extends widget_t {
     private source!: string;
     public configuration(configuration: Object): void {
         if (!this.configurationHas(configuration, "source")) {
-            throw new Error("Missing image `source` for an image widget");
+            this.raiseError("Missing image `source` for an image widget");
         }
         this.source = (configuration as any).source as string;
         if (this.configurationHas(configuration, "contain")) {
@@ -31,7 +31,7 @@ export class image_t extends widget_t {
                     this.content.setAttribute("contain", contain);
                     break;
                 default:
-                    throw new Error(`"${contain}" is not a valid \`contain\` property for a video widget`);
+                    this.raiseError(`"${contain}" is not a valid \`contain\` property for a video widget`);
             }
         }
     }
@@ -41,7 +41,13 @@ export class image_t extends widget_t {
                 this.content.onload = () => resolve(this.content);
                 this.content.onerror = () => reject(`An image resource of type "${resource.mimeType}" is not supported in this browser`);
                 (this.content as HTMLImageElement).src = resource.blobUrl;
-            }).catch((error) => reject(error));
+            }).catch((error) => {
+                try {
+                    this.raiseError(error)
+                } catch (error) {
+                    reject(error);
+                }
+            });
         });
     };
 };

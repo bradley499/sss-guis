@@ -52,7 +52,7 @@ enum widgetData_t {
 }
 
 /**
- * @brief The type of a widget reference identifier
+ * The type of a widget reference identifier
  */
 export type widgetIdentifier_t = (string | number);
 

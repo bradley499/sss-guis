@@ -2,14 +2,14 @@
 stylesheet: &stylesheet "static_files/stylesheet.css"
 
 guis:
- - name: "First example"
-   config: "first_example.yaml"
-   stylesheet: *stylesheet
-   dependencies:
-    - "static_files/*"
- - name: "Second example"
-   config: "second_example.yaml"
-   stylesheet: *stylesheet
-   modules:
-    - "static_files/modules/additional_module.js"
-   debug: true
+  - name: "First example"
+    config: "first_example.yaml"
+    stylesheet: *stylesheet
+    dependencies:
+      - "static_files/*"
+  - name: "Second example"
+    config: "second_example.yaml"
+    stylesheet: *stylesheet
+    modules:
+      - "static_files/modules/additional_module.js"
+    debug: true

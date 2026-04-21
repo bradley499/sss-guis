@@ -30,26 +30,26 @@ export class tabs_t extends widget_t {
     public configuration(configuration: Object): void {
         if (!this.configurationHas(configuration, "items") ||
             !Array.isArray((configuration as any).items)) {
-            this.raiseError("A tabs widget is missing `items`");
+            throw this.configurationError("A tabs widget is missing `items`");
         }
         ((configuration as any).items as Object[]).forEach((item: any) => {
             if (!this.configurationHas(item, "name")) {
-                this.raiseError("A tab `name` is expected");
+                throw this.configurationError("A tab `name` is expected");
             }
             if (!(typeof item.name === "string" || typeof item.name === "number")) {
-                this.raiseError("A tab `name` needs to be either a string or a number");
+                throw this.configurationError("A tab `name` needs to be either a string or a number");
             }
             const tabName: string = item.name.toString();
             if (tabName in this.tabs) {
-                this.raiseError(`Another tab exists with the name of "${tabName}" within a tab widget`);
+                throw this.configurationError(`Another tab exists with the name of "${tabName}" within a tab widget`);
             }
             if (!this.configurationHas(item, "object")) {
-                this.raiseError(`Tab "${tabName}" has no reference to an \`object\``);
+                throw this.configurationError(`Tab "${tabName}" has no reference to an \`object\``);
             }
             this.tabs[tabName] = structure_t.widget(item.object);
         });
         if (Object.keys(this.tabs).length == 0) {
-            this.raiseError("A tabs widget is missing `items`");
+            throw this.configurationError("A tabs widget is missing `items`");
         }
         if (this.configurationHas(configuration, "position")) {
             do {
@@ -63,11 +63,11 @@ export class tabs_t extends widget_t {
                             this.position = position;
                             break;
                         default:
-                            this.raiseError(`"${position}" is not a valid position for a collection of tabs`);
+                            throw this.configurationError(`"${position}" is not a valid position for a collection of tabs`);
                     }
                     break;
                 }
-                this.raiseError("The `position` for a collection of tabs must be a string");
+                throw this.configurationError("The `position` for a collection of tabs must be a string");
             } while (false);
         }
         this.content.setAttribute("position", this.position);

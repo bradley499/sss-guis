@@ -14,7 +14,7 @@ export class audio_t extends widget_t {
     protected source!: string;
     public configuration(configuration: Object): void {
         if (!this.configurationHas(configuration, "source")) {
-            this.raiseError("Missing audio `source` for an audio widget");
+            throw this.configurationError("Missing audio `source` for an audio widget");
         }
         this.source = (configuration as any).source as string;
     }
@@ -42,13 +42,7 @@ export class audio_t extends widget_t {
                 this.content.onerror = () => failure();
                 (this.content as HTMLAudioElement).load();
                 resolve(this.content);
-            }).catch((error) => {
-                try {
-                    this.raiseError(error)
-                } catch (error) {
-                    reject(error);
-                }
-            });
+            }).catch((error) => reject(this.configurationError(error)));
         });
     };
 };

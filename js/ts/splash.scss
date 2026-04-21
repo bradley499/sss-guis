@@ -1,11 +1,11 @@
 $side-margin: 5em;
 
 div {
-    min-width: calc(100% - ($side-margin * 2));
+    min-width: calc(100% - (#{$side-margin} * 2));
     min-height: auto;
-    max-width: calc(100% - ($side-margin * 2));
-    max-height: calc(100% - ($side-margin * 2));
-    margin: $side-margin auto auto;
+    max-width: calc(100% - (#{$side-margin} * 2));
+    max-height: calc(100% - (#{$side-margin} * 2));
+    margin: #{$side-margin} auto auto;
     align-items: center;
     background-color: white;
     box-shadow: 0 0 1.5em 2em #fff;

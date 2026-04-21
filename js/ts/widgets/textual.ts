@@ -27,7 +27,7 @@ const textualAlignmentVerticalAttribute: string = "valign";
 export abstract class textual_t extends widget_t {
     public setConfiguration(configuration: Object, textualAlignmentHorizontalDefault: textualAlignmentHorizontal_t, textualAlignmentVerticalDefault: textualAlignmentVertical_t): void {
         if (!this.configurationHas(configuration, "text")) {
-            this.raiseError(`A ${this.content.className} widget requires \`text\` to be shown`);
+            throw this.configurationError(`A ${this.content.className} widget requires \`text\` to be shown`);
         }
         this.content.innerText = (configuration as any).text as string;
         if (this.configurationHas(configuration, "alignment")) {
@@ -41,7 +41,7 @@ export abstract class textual_t extends widget_t {
                         this.content.setAttribute(textualAlignmentHorizontalAttribute, horizontalAlignment);
                         break;
                     default:
-                        this.raiseError(`"${horizontalAlignment}" is not a valid \`horizontal\` \`alignment\` for a ${this.content.className} widget`);
+                        throw this.configurationError(`"${horizontalAlignment}" is not a valid \`horizontal\` \`alignment\` for a ${this.content.className} widget`);
                 }
             } else {
                 this.content.setAttribute(textualAlignmentHorizontalAttribute, textualAlignmentHorizontalDefault);
@@ -55,7 +55,7 @@ export abstract class textual_t extends widget_t {
                         this.content.setAttribute(textualAlignmentVerticalAttribute, verticalAlignment);
                         break;
                     default:
-                        this.raiseError(`"${verticalAlignment}" is not a valid \`vertical\` \`alignment\` for a ${this.content.className} widget`);
+                        throw this.configurationError(`"${verticalAlignment}" is not a valid \`vertical\` \`alignment\` for a ${this.content.className} widget`);
                 }
             } else {
                 this.content.setAttribute(textualAlignmentVerticalAttribute, textualAlignmentVerticalDefault);
@@ -77,7 +77,7 @@ export abstract class textual_t extends widget_t {
             }
             const color: string = (configuration as any).color;
             if (!isColor(color)) {
-                this.raiseError(`"${color}" is not a valid \`color\` for a ${this.content.className} widget`);
+                throw this.configurationError(`"${color}" is not a valid \`color\` for a ${this.content.className} widget`);
             }
             const textualShadowRoot: ShadowRoot = this.content.attachShadow({ mode: "closed" });
             const noInheritedStyling: CSSStyleSheet = new CSSStyleSheet();

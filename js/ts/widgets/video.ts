@@ -20,7 +20,7 @@ export class video_t extends widget_t {
     private source!: string;
     public configuration(configuration: Object): void {
         if (!this.configurationHas(configuration, "source")) {
-            this.raiseError("Missing video `source` for a video widget");
+            throw this.configurationError("Missing video `source` for a video widget");
         }
         this.source = (configuration as any).source as string;
         if (this.configurationHas(configuration, "contain")) {
@@ -31,7 +31,7 @@ export class video_t extends widget_t {
                     this.content.setAttribute("contain", contain);
                     break;
                 default:
-                    this.raiseError(`"${contain}" is not a valid \`contain\` property for a video widget`);
+                    throw this.configurationError(`"${contain}" is not a valid \`contain\` property for a video widget`);
             }
         }
     };
@@ -59,13 +59,7 @@ export class video_t extends widget_t {
                 (this.content as HTMLVideoElement).oncanplaythrough = () => resolve(this.content);
                 this.content.onerror = () => failure();
                 (this.content as HTMLVideoElement).load();
-            }).catch((error) => {
-                try {
-                    this.raiseError(error)
-                } catch (error) {
-                    reject(error);
-                }
-            });
+            }).catch((error) => reject(this.configurationError(error)));
         });
     };
 };

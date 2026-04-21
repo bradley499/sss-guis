@@ -23,25 +23,25 @@ export class layout_t extends widget_t {
     public configuration(configuration: Object): void {
         if (!this.configurationHas(configuration, "columns") ||
             !Array.isArray((configuration as any).columns)) {
-            this.raiseError("A layout needs a numeric set of `columns`");
+            throw this.configurationError("A layout needs a numeric set of `columns`");
         }
         if (!this.configurationHas(configuration, "rows") ||
             !Array.isArray((configuration as any).rows)) {
-            this.raiseError("A layout needs a numeric set of `rows`");
+            throw this.configurationError("A layout needs a numeric set of `rows`");
         }
         const columns: number[] = (configuration as any).columns;
         const rows: number[] = (configuration as any).rows;
         const maxItems: number = (columns.length * rows.length);
         if (this.configurationHas(configuration, "items")) {
             if (!Array.isArray((configuration as any).items)) {
-                this.raiseError("A layout's `items` must be a list");
+                throw this.configurationError("A layout's `items` must be a list");
             }
             (configuration as any).items.forEach((item: any) => {
                 if (this.children.length == maxItems) {
-                    this.raiseError("Attempting to add too many items to a layout (consider increasing `columns` or `rows`)");
+                    throw this.configurationError("Attempting to add too many items to a layout (consider increasing `columns` or `rows`)");
                 }
                 if (!this.configurationHas(item, "object")) {
-                    this.raiseError("Layout item has no reference to an `object`");
+                    throw this.configurationError("Layout item has no reference to an `object`");
                 }
                 if (item.object === null) {
                     this.children.push(new void_t());
@@ -55,25 +55,25 @@ export class layout_t extends widget_t {
         }
         const columnsStyle: string = columns.map(column => {
             if (typeof column !== "number") {
-                this.raiseError(`A layout requires a numerical column size - not "${column}"`);
+                throw this.configurationError(`A layout requires a numerical column size - not "${column}"`);
             }
             if (column == 0) {
                 return "auto";
             }
             if (column < 0) {
-                this.raiseError("A layout can only have a column with a size that is positive");
+                throw this.configurationError("A layout can only have a column with a size that is positive");
             }
             return ("minmax(0," + column.toString() + "fr)");
         }).join(" ");
         const rowsStyle: string = rows.map(row => {
             if (typeof row !== "number") {
-                this.raiseError(`A layout requires a numerical row size - not "${row}"`);
+                throw this.configurationError(`A layout requires a numerical row size - not "${row}"`);
             }
             if (row == 0) {
                 return "auto";
             }
             if (row < 0) {
-                this.raiseError("A layout can only have a row with a size that is positive");
+                throw this.configurationError("A layout can only have a row with a size that is positive");
             }
             return ("minmax(0," + row.toString() + "fr)");
         }).join(" ");
@@ -81,7 +81,7 @@ export class layout_t extends widget_t {
             if (this.configurationHas(configuration, "gap")) {
                 const gap: any = (configuration as any).gap;
                 if (typeof gap !== "boolean") {
-                    this.raiseError("A layout has a `gap` property but is not a boolean value");
+                    throw this.configurationError("A layout has a `gap` property but is not a boolean value");
                 }
                 if (gap === false) {
                     return "gap:0!important;grid-gap:0!important;";

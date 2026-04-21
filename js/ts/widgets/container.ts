@@ -21,15 +21,15 @@ export class container_t extends widget_t {
             if ((typeof (configuration as any).title === "string" || typeof (configuration as any).title === "number")) {
                 this.title = (configuration as any).title.toString();
             } else {
-                this.raiseError("A container needs a `title` to be either a string or a number");
+                throw this.configurationError("A container needs a `title` to be either a string or a number");
             }
         } else {
-            this.raiseError("A container needs a `title`");
+            throw this.configurationError("A container needs a `title`");
         }
         if (this.configurationHas(configuration, "object")) {
             this.object = structure_t.widget((configuration as any).object);
         } else {
-            this.raiseError("A container has no reference to an `object`");
+            throw this.configurationError("A container has no reference to an `object`");
         }
     }
     public render(): Promise<HTMLElement> {

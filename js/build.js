@@ -20,7 +20,7 @@ async function build() {
         fs.mkdirSync("dist");
     }
     const modifiedDts = dts.join("\n").replace(/^export\s+(declare\s+)?function\s+/gm, "declare function ").replace(/^(export\s+)?interface\s+/gm, "declare interface ").replace(/^export\s+(declare\s+)?type\s+/gm, "declare type ").replace(/^export\s+(declare\s+)?(abstract\s+)?class\s+/gm, (match) => {
-        // Remove 'export ' but keep 'declare ' and 'abstract '
+        // Remove "export " but keep "declare " and "abstract "
         return match.replace("export ", "").trimStart().startsWith("declare")
             ? match.replace("export ", "")
             : "declare " + match.replace("export ", "");

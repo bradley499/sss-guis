@@ -59,10 +59,11 @@ export abstract class widget_t {
         }
     }
     /**
-     * Raise an error originating from a specific widget
+     * Generate an error originating from a specific widget's configuration
      * @param {any} error The error to raise (can be an Error itself)
+     * @returns {Error} The generated error
      */
-    protected raiseError(error: any): never {
+    protected configurationError(error: any): Error {
         const name: (string | null) = this.content.getAttribute("name");
         const errorType: any = (error instanceof Error ? (error.constructor as any) : Error);
         const formattedError = new errorType(`${(name !== null && name.trim().length > 0) ? `${name}: ` : ""}${error instanceof Error ? error.message : String(error)}`);
@@ -70,6 +71,6 @@ export abstract class widget_t {
         if (error instanceof Error) {
             formattedError.stack = error.stack;
         }
-        throw formattedError;
+        return formattedError;
     }
 };

@@ -83,7 +83,7 @@ export abstract class textual_t extends widget_t {
             const noInheritedStyling: CSSStyleSheet = new CSSStyleSheet();
             noInheritedStyling.replaceSync(`:host{color:${color}!important}`);
             textualShadowRoot.adoptedStyleSheets = [noInheritedStyling];
-            const slot = document.createElement("slot");
+            const slot: HTMLSlotElement = document.createElement("slot");
             textualShadowRoot.appendChild(slot);
         }
     }

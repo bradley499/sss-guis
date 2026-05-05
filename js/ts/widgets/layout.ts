@@ -97,7 +97,7 @@ export class layout_t extends widget_t {
         const noInheritedStyling: CSSStyleSheet = new CSSStyleSheet();
         noInheritedStyling.replaceSync(`:host{display:grid!important;grid-template-columns:${columnsStyle}!important;grid-template-rows:${rowsStyle}!important;${gapStyle}}`);
         layoutShadowRoot.adoptedStyleSheets = [noInheritedStyling];
-        const slot = document.createElement("slot");
+        const slot: HTMLSlotElement = document.createElement("slot");
         layoutShadowRoot.appendChild(slot);
     }
     public render(): Promise<HTMLElement> {

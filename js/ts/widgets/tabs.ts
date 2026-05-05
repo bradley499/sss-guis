@@ -71,6 +71,12 @@ export class tabs_t extends widget_t {
             } while (false);
         }
         this.content.setAttribute("position", this.position);
+        const layoutShadowRoot: ShadowRoot = this.content.attachShadow({ mode: "closed" });
+        const noInheritedStyling: CSSStyleSheet = new CSSStyleSheet();
+        noInheritedStyling.replaceSync(":host{display:flex!important}:host([position=top]){flex-direction:column!important}:host([position=bottom]){flex-direction:column-reverse!important}:host([position=left]){flex-direction:row!important}:host([position=right]){flex-direction:row-reverse!important}::slotted(div:first-of-type){display:flex!important;overflow:auto;min-width:min-content;width:auto;height:auto}:host([position=bottom]) ::slotted(div:first-of-type),:host([position=top]) ::slotted(div:first-of-type){flex-direction:row}:host([position=left]) ::slotted(div:first-of-type),:host([position=right]) ::slotted(div:first-of-type){flex-direction:column}");
+        layoutShadowRoot.adoptedStyleSheets = [noInheritedStyling];
+        const slot: HTMLSlotElement = document.createElement("slot");
+        layoutShadowRoot.appendChild(slot);
     }
     public render(): Promise<HTMLElement> {
         return new Promise<HTMLElement>(async (resolve, reject) => {
@@ -80,13 +86,12 @@ export class tabs_t extends widget_t {
             let firstTab: boolean = true;
             try {
                 let tabsPromises: { [key: string]: Promise<HTMLElement> } = {};
-                Object.entries(this.tabs).forEach(
-                    ([tab, widget]) => {
-                        tabsPromises[tab] = widget.render();
-                    });
+                Object.entries(this.tabs).forEach(([tab, widget]) => {
+                    tabsPromises[tab] = widget.render();
+                });
                 await Promise.all(Object.values(tabsPromises));
-                await Object.entries(tabsPromises).forEach(async ([tab, widget]) => {
-                    const tabObject: HTMLElement = await widget;
+                for (const [tab, widgetPromise] of Object.entries(tabsPromises)) {
+                    const tabObject: HTMLElement = await widgetPromise;
                     const tabButton: HTMLButtonElement = document.createElement("button");
                     tabButton.innerText = tab;
                     tabButtons.push(tabButton);
@@ -106,7 +111,7 @@ export class tabs_t extends widget_t {
                         tabButton.click();
                         firstTab = false;
                     }
-                });
+                }
                 this.content.appendChild(tabButtonContainer);
                 this.content.appendChild(tabView);
                 resolve(this.content);
@@ -115,4 +120,5 @@ export class tabs_t extends widget_t {
             }
         });
     }
+
 };

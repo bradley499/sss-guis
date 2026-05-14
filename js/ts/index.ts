@@ -11,6 +11,7 @@ import { loadModule, loadModules } from "./resources/module";
 
 // @internal
 async function main(): Promise<void> {
+    let projectName: string = "SSS";
     // Splash screen
     const splashContainer: HTMLBodyElement = document.createElement("body");
     const splashShadowRoot: ShadowRoot = splashContainer.attachShadow({ "mode": "closed" });
@@ -19,13 +20,13 @@ async function main(): Promise<void> {
     splashShadowRoot.adoptedStyleSheets = [noInheritedStyling];
     const splashContent: HTMLDivElement = document.createElement("div");
     const splashHeading: HTMLHeadingElement = document.createElement("h1");
-    splashHeading.innerText = "SSS";
+    splashHeading.innerText = projectName;
     const splashStatus: HTMLParagraphElement = document.createElement("p");
     splashStatus.innerText = "Loading...";
     const setError = (error: string): void => {
         splashStatus.innerText = error;
         splashStatus.classList.add("error")
-        document.title = "Error | SSS";
+        document.title = `Error | ${projectName}`;
     };
     splashContent.appendChild(splashHeading);
     splashContent.appendChild(splashStatus);
@@ -36,6 +37,8 @@ async function main(): Promise<void> {
         let gui_data: (gui_t | null) = null;
         try {
             gui_data = new gui_t();
+            projectName = gui_data.project;
+            splashHeading.innerText = projectName;
         } catch (error: any) {
             reject(error.message);
         }
@@ -59,7 +62,7 @@ async function main(): Promise<void> {
                         }
                         document.documentElement.replaceChild(document.createElement("body"), splashContainer);
                         document.body.appendChild(mainElement);
-                        document.title = gui_data!.name.trim() + " | SSS";
+                        document.title = gui_data!.name.trim();
                         document.dispatchEvent(new CustomEvent<structureLoadEvent>(structureLoadEventType(), {
                             detail: {
                                 success: true,

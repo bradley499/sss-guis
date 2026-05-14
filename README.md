@@ -26,6 +26,13 @@ The initial configuration file expects a YAML sequence (list) to be accessible u
 |`debug`|`boolean`|*Optional* - Wether to leave the names of widgets in the output files, otherwise it represents each widget as a numeric value.|
 |`defaults`|Map of complex widget structures|*Optional* - Default values for widgets.|
 
+Extra configurable properties for the entire project are optionally defined at the root of the YAML document (not part of the `guis` sequence):
+|Property|Type|Meaning|
+|-|-|-|
+|`project`|`string`|*Optional* - The name of the project, this will be appended to each GUI title.|
+|`project_delimiter`|`string`|*Optional* - The delimiter to be between the GUI title and the `project`.|
+
+
 An example structure could look like the following:
 ```yaml
 guis:

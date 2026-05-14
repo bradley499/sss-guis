@@ -23,6 +23,14 @@ namespace sss::guis
              */
             std::string name;
             /**
+             * @brief The project parent for the GUI
+             */
+            std::string project;
+            /**
+             * @brief The project parent delimiter for the GUI
+             */
+            std::string project_delimiter;
+            /**
              * @brief Whether the GUI should be generated with debug mode
              */
             bool debug;

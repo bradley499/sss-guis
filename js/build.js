@@ -34,6 +34,9 @@ async function build() {
         format: "iife",
         target: "es2019",
         outfile: "dist/" + bundleName + ".js",
+        banner: {
+            js: "// SSS-GUIS"
+        },
         plugins: [
             {
                 name: "scss-string",

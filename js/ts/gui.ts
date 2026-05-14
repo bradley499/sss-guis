@@ -15,6 +15,11 @@ interface gui_schema_t {
      */
     name: string;
     /**
+     * The name of the project
+     * @internal
+     */
+    project: string;
+    /**
      * The path to the structure of the GUI
      * @internal
      */
@@ -48,6 +53,11 @@ export class gui_t {
      */
     public name!: string;
     /**
+     * The name of the project
+     * @internal
+     */
+    public project!: string;
+    /**
      * The path to the structure of the GUI
      * @internal
      */
@@ -63,6 +73,7 @@ export class gui_t {
         }
         this.modules = gui.modules;
         this.name = gui.name;
+        this.project = gui.project;
         this.structure = gui.structure
         this.stylesheet = gui.stylesheet;
     }

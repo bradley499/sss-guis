@@ -17,6 +17,16 @@ using namespace sss::guis;
 namespace
 {
     /**
+     * @brief The default project name
+     */
+    std::string const project_default = "SSS";
+
+    /**
+     * @brief The default project delimiter
+     */
+    std::string const project_delimiter_default = " | ";
+
+    /**
      * @brief Check if a string is empty
      * @param string The string to check
      * @returns Whether the string is empty
@@ -167,18 +177,20 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
       m_configuration_file(configuration_file),
       m_output_directory(std::filesystem::absolute(output_directory.lexically_normal()))
 {
-    std::vector<YAML::Node> gui_nodes = {};
+    std::vector<std::tuple<YAML::Node, YAML::Node, YAML::Node>> gui_nodes = {};
     try
     {
         for (auto const &document : YAML::LoadAllFromFile(configuration_file.string()))
         {
             if (!document.IsDefined())
                 continue;
+            YAML::Node const project_name = document["project"];
+            YAML::Node const project_name_delimiter = document["project_delimiter"];
             YAML::Node const guis = document["guis"];
             if (!guis.IsDefined() || !guis.IsSequence())
                 continue;
             for (auto &&gui : guis)
-                gui_nodes.push_back(gui);
+                gui_nodes.emplace_back(gui, project_name, project_name_delimiter);
         }
         if (gui_nodes.empty())
             throw std::runtime_error("Expected list of `guis` in configuration");
@@ -187,7 +199,7 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
     {
         throw std::runtime_error("Failed to load descriptive YAML file \"" + configuration_file.string() + "\" due to an error on line " + std::to_string(yaml_mark_line_number(e.mark)) + ": " + e.msg);
     }
-    for (YAML::Node const &gui_node : gui_nodes)
+    for (auto const &[gui_node, project_name, project_delimiter] : gui_nodes)
     {
         if (!gui_node.IsMap())
             throw std::runtime_error("Expected `gui` to hold a defined configuration on line " + std::to_string(yaml_node_line_number(gui_node)) + " of \"" + configuration_file.string() + "\"");
@@ -217,6 +229,28 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
         current_gui_data.name = name.as<std::string>();
         if (is_empty(current_gui_data.name))
             throw std::runtime_error("A name must not be empty on line " + std::to_string(yaml_node_line_number(name)) + " of \"" + configuration_file.string() + "\"");
+
+        // Store name of project
+        try
+        {
+            current_gui_data.project = project_name.as<std::string>(project_default);
+        }
+        catch (YAML::BadConversion const &e)
+        {
+            throw std::runtime_error("Invalid `project` name only a string is expected on line " + std::to_string(yaml_node_line_number(project_name)) + " of \"" + configuration_file.string() + "\"");
+        }
+        if (is_empty(current_gui_data.project))
+            throw std::runtime_error("Invalid `project` name must not be empty on line " + std::to_string(yaml_node_line_number(project_name)) + " of \"" + configuration_file.string() + "\"");
+
+        // Store project delimiter (this is allowed to be empty)
+        try
+        {
+            current_gui_data.project_delimiter = project_delimiter.as<std::string>(project_delimiter_default);
+        }
+        catch (YAML::BadConversion const &e)
+        {
+            throw std::runtime_error("Invalid `project_delimiter` name only a string is expected on line " + std::to_string(yaml_node_line_number(project_delimiter)) + " of \"" + configuration_file.string() + "\"");
+        }
 
         // Store configuration filepath of GUI
         auto const config = gui_node["config"];
@@ -411,13 +445,14 @@ void generation_t::generate(generation_t::gui_t const &data, std::string const &
 
     // GUI JSON object
     nlohmann::json gui_info = {
-        {"name", data.name},
+        {"project", data.project},
+        {"name", data.name + data.project_delimiter + data.project},
         {"structure", relative_adjustment + structure_file},
         {"stylesheet", relative_adjustment + data.stylesheet_file},
         {"modules", modules}};
 
     // Generate HTML
-    std::string html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>SSS</title><script type=\"text/javascript\">const gui=" + gui_info.dump() + ";</script><script type=\"text/javascript\" src=\"/" + guis_js_path + "\"></script></head><body><noscript>Browser not supported: JavaScript required!</noscript></body></html>";
+    std::string html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>" + data.project + "</title><script type=\"text/javascript\">const gui=" + gui_info.dump() + ";</script><script type=\"text/javascript\" src=\"/" + guis_js_path + "\"></script></head><body><noscript>Browser not supported: JavaScript required!</noscript></body></html>";
 
     /**
      * @brief Write contents to a file

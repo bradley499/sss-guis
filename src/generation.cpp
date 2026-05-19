@@ -574,7 +574,6 @@ void generation_t::build_all(bool const disallow_conflicts, bool const flatten_d
         std::map<std::filesystem::path, std::string> gui_output_html_files = {};
         for (auto const &gui_data : m_guis)
         {
-            // Access the path from the pair (adjust to .first if that holds your output path)
             std::filesystem::path const &file_path = gui_data.html_file;
             if (file_path.empty())
                 continue;

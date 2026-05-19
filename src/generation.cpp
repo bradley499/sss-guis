@@ -136,17 +136,69 @@ namespace
      */
     std::string sanitize_name(std::string const &name)
     {
-        std::filesystem::path original(name);
-        std::filesystem::path result;
-
-        for (auto const &part : original)
+        static constexpr std::string_view forbidden_characters(":*?\"<>|");
+        std::string result;
+        result.reserve(name.size()); // Allocate once to eliminate reallocations
+        size_t segment_start = 0;
+        bool segment_has_content = false;
+        bool has_seen_any_content_yet = false;
+        for (char const character : name)
         {
-            if (part == std::filesystem::path("/") || part == ".." || part == ".")
-                continue;
-            result /= part;
+            if (character == '/' || character == '\\')
+            {
+                if (result.size() > segment_start)
+                {
+                    if (segment_has_content)
+                    {
+                        while (result.size() > segment_start && result.back() == ' ')
+                            result.pop_back();
+                    }
+                    std::string_view const segment(result.data() + segment_start, result.size() - segment_start);
+                    bool const is_all_periods = (segment.find_first_not_of('.') == std::string_view::npos);
+                    bool const is_leading_padding = (!has_seen_any_content_yet && is_empty(std::string(segment)));
+                    if (is_all_periods || is_leading_padding)
+                        result.resize(segment_start); // Roll back invalid segment data
+                    else
+                    {
+                        result += '/';
+                        segment_start = result.size();
+                    }
+                }
+                segment_has_content = false;
+            }
+            else if (character == ' ')
+            {
+                if (!has_seen_any_content_yet && !segment_has_content)
+                    continue; // Skip leading layout spaces
+                result += character;
+            }
+            else if (character >= ' ' && forbidden_characters.find(character) == std::string_view::npos)
+            {
+                result += character;
+                if (character != '.')
+                    segment_has_content = true;
+                has_seen_any_content_yet = true;
+            }
         }
-
-        return result.string();
+        // Handle the final trailing segment after the loop ends
+        if (result.size() > segment_start && (segment_has_content || has_seen_any_content_yet))
+        {
+            if (segment_has_content)
+            {
+                while (result.size() > segment_start && result.back() == ' ')
+                    result.pop_back();
+            }
+            std::string_view const segment(result.data() + segment_start, result.size() - segment_start);
+            bool const is_all_periods = (segment.find_first_not_of('.') == std::string_view::npos);
+            if (is_all_periods || is_empty(std::string(segment)))
+                result.resize(segment_start);
+        }
+        else
+            result.resize(segment_start); // Truncate out trailing junk data
+        // Clean up any trailing slash left over from segment building
+        if (!result.empty() && result.back() == '/')
+            result.pop_back();
+        return result;
     }
 
     /**
@@ -229,6 +281,8 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
         current_gui_data.name = name.as<std::string>();
         if (is_empty(current_gui_data.name))
             throw std::runtime_error("A name must not be empty on line " + std::to_string(yaml_node_line_number(name)) + " of \"" + configuration_file.string() + "\"");
+        else if (is_empty(sanitize_name(current_gui_data.name)))
+            throw std::runtime_error("A name must not be exclusively be made up of invalid filesystem characters on line " + std::to_string(yaml_node_line_number(name)) + " of \"" + configuration_file.string() + "\"");
 
         // Store name of project
         try
@@ -517,6 +571,23 @@ void generation_t::build_all(bool const disallow_conflicts, bool const flatten_d
     if (disallow_conflicts)
     {
         copy_options |= std::filesystem::copy_options::overwrite_existing;
+        std::map<std::filesystem::path, std::string> gui_output_html_files = {};
+        for (auto const &gui_data : m_guis)
+        {
+            // Access the path from the pair (adjust to .first if that holds your output path)
+            std::filesystem::path const &file_path = gui_data.html_file;
+            if (file_path.empty())
+                continue;
+            if (gui_output_html_files.count(file_path))
+            {
+                std::string const &existing_gui_name = gui_output_html_files.at(file_path);
+                if (existing_gui_name == gui_data.name)
+                    throw std::runtime_error("Multiple GUIs share the same name of: \"" + gui_data.name + "\"");
+                else
+                    throw std::runtime_error("Multiple GUIs will conflict as \"" + existing_gui_name + "\" and \"" + gui_data.name + "\" will both yield the same output filename");
+            }
+            gui_output_html_files.insert_or_assign(file_path, gui_data.name);
+        }
         // Check if output dependencies will conflict with generated files
         std::vector<std::filesystem::path> dependency_filenames = {};
         for (auto const &dependency : m_dependencies)

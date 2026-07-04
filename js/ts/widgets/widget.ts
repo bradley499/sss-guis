@@ -5,11 +5,11 @@ export abstract class widget_t {
     /**
      * Main HTMLElement of the widget
      */
-    protected content!: HTMLElement;
+    protected readonly content!: HTMLElement;
     /**
      * Construct a base widget
-     * @param {string} baseType The base type to construct the widget from
-     * @param {string} type The type of the widget
+     * @param baseType The base type to construct the widget from
+     * @param type The type of the widget
      */
     constructor(baseType: string, type: string) {
         try {
@@ -23,8 +23,19 @@ export abstract class widget_t {
         this.content.className = type;
     }
     /**
+     * @abstract Configure a widget
+     * @param configuration Contents of widget
+     */
+    public abstract configuration(configuration: object): void;
+    /**
+     * @abstract Prepares a widget for rendering
+     * @returns Promise to prepare a widget
+     * @async
+     */
+    protected abstract prepare(): Promise<void>;
+    /**
      * Configure a widget's name
-     * @param {string} name Name of widget
+     * @param name Name of widget
      * @internal
      */
     public configurationName(name: string): void {
@@ -35,42 +46,59 @@ export abstract class widget_t {
         this.content.setAttribute("name", name);
     }
     /**
-     * @abstract Configure a widget
-     * @param {Object} configuration Contents of widget
+     * Renders a widget
+     * @returns Widget contents
+     * @async
      */
-    public abstract configuration(configuration: Object): void;
+    public async render(): Promise<HTMLElement> {
+        await this.prepare();
+        return this.content;
+    }
     /**
-     * @abstract Render a widget
-     * @returns {HTMLElement}
+     * Whether a configuration has an property
+     * @param configuration Configuration to check against
+     * @param property The entity to search for
+     * @returns Whether the configuration has an entity
      */
-    public abstract render(): Promise<HTMLElement>;
-    /**
-     * Whether a configuration has an entity
-     * @param {Object} configuration Configuration to check against
-     * @param {string} entity The entity to search for
-     * @returns {boolean} Whether the configuration has an entity
-     */
-    protected configurationHas(configuration: Object, entity: string): boolean {
+    protected configurationHas(configuration: object, property: string): boolean {
         try {
-            const value: any = (configuration as any)[entity];
+            const value: unknown = (configuration as Record<string, unknown>)[property];
             return (value !== undefined);
         } catch {
             return false;
         }
     }
     /**
-     * Generate an error originating from a specific widget's configuration
-     * @param {any} error The error to raise (can be an Error itself)
-     * @returns {Error} The generated error
+     * Get a configuration property
+     * @param configuration Configuration to abstract property from
+     * @param property The property to abstract
+     * @returns Configuration property
+     * @throws Error when property does not exist
      */
-    protected configurationError(error: any): Error {
+    protected configurationGet(configuration: object, property: string): unknown {
+        try {
+            const value: unknown = (configuration as Record<string, unknown>)[property];
+            if (value === undefined) {
+                throw new Error();
+            }
+            return value;
+        } catch {
+            throw this.configurationError(`Configuration does not have an entity named "${property}"`);
+        }
+    }
+    /**
+     * Generate an error originating from a specific widget's configuration
+     * @param error The error to raise (can be an Error itself)
+     * @returns The generated error
+     */
+    protected configurationError(error: unknown): Error {
         const name: (string | null) = this.content.getAttribute("name");
-        const errorType: any = (error instanceof Error ? (error.constructor as any) : Error);
-        const formattedError = new errorType(`${(name !== null && name.trim().length > 0) ? `${name}: ` : ""}${error instanceof Error ? error.message : String(error)}`);
+        const errorType: ErrorConstructor = (error instanceof Error ? (error.constructor as ErrorConstructor) : Error);
+        const formattedError: Error = new errorType(`${(name !== null && name.trim().length > 0) ? `${name}: ` : ""}${error instanceof Error ? error.message : String(error)}`);
         // If it was an Error object preserve the stack trace
         if (error instanceof Error) {
             formattedError.stack = error.stack;
         }
         return formattedError;
     }
-};
+}

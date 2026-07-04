@@ -5,22 +5,28 @@ import { widget_t } from "./widget";
  */
 export class void_t extends widget_t {
     /**
-     * Construct a void widget
+     * @inheritdoc
      */
     constructor() {
         super("div", "void");
-        this.content.innerText;
-        const shadowRoot = this.content.attachShadow({ "mode": "closed" });
+    }
+    /**
+     * @inheritdoc
+    */
+   public configuration(_configuration: object): void {
+        this.content.innerText = "";
+        const shadowRoot: ShadowRoot = this.content.attachShadow({
+            "mode": "closed"
+        });
         const noDisplayStyling: CSSStyleSheet = new CSSStyleSheet();
         noDisplayStyling.replaceSync(":host{all:initial!important;display:block!important;visibility:hidden!important;}");
         shadowRoot.adoptedStyleSheets = [noDisplayStyling];
-    };
-    public configuration(_configuration: Object): void {
         return;
     }
-    public render(): Promise<HTMLElement> {
-        return new Promise<HTMLElement>((resolve, _reject) => {
-            resolve(this.content);
-        });
-    };
+    /**
+     * @inheritdoc
+     */
+    public async prepare(): Promise<void> {
+        return Promise.resolve();
+    }
 };

@@ -4,39 +4,46 @@ import { loadResource, multimediaResource_t } from "./resource";
  * Collection of modules with associated promises
  * @internal
  */
-var modules: { [key: string]: Promise<void> } = {};
+const modules: Record<string, Promise<void>> = {};
 /**
  * Total amount of modules successfully loaded
  * @internal
  */
-var modulesLoaded: number = 0;
+let modulesLoaded: number = 0;
 
 /**
  * Asynchronously load a module
  * @async
- * @param {string} url The location of the module
- * @returns {Promise<void>} Success of the loading of the module
+ * @param url The location of the module
+ * @returns Success of the loading of the module
  */
 export function loadModule(url: string): Promise<void> {
     if (url in modules) {
         return modules[url];
     }
-    let module: Promise<void> = new Promise<void>((resolve, reject) => {
-        const failure = (): void => {
-            reject(`Failed to load module: ${url}`);
-        }
+    const module: Promise<void> = new Promise<void>((resolve: () => void, reject: (reason: Error) => void) => {
+        /**
+         * Failed to load module
+         */
+        function failure(): void {
+            reject(new Error(`Failed to load module: ${url}`));
+        };
         loadResource(url).then((resource: multimediaResource_t) => {
             const module: HTMLScriptElement = document.createElement("script");
-            module.type = "module"
+            module.type = "module";
             module.src = resource.blobUrl;
             module.crossOrigin = "anonymous";
             module.async = true;
-            module.onload = () => {
+            module.addEventListener("load", () => {
                 modulesLoaded++;
                 resolve();
-            };
-            module.onerror = () => failure();
+            });
+            module.addEventListener("error", () => {
+                failure();
+            });
             document.head.appendChild(module);
+        }).catch((_error: unknown) => {
+            failure();
         });
     });
     modules[url] = module;
@@ -44,26 +51,37 @@ export function loadModule(url: string): Promise<void> {
 }
 /**
  * Checks whether any modules are yet to be successfully loaded
- * @returns {boolean} Whether modules are yet to be successfully loaded
+ * @returns Whether modules are yet to be successfully loaded
  */
 function loadingModules(): boolean {
     return (modulesLoaded != Object.keys(modules).length);
 }
 /**
  * Wait for all modules to load
- * @returns {Promise<void>} Success of loading all of the modules
+ * @returns Success of loading all of the modules
  */
 export function loadModules(): Promise<void> {
-    return new Promise<void>(async (resolve, reject) => {
-        const moduleLoadingError = (error: ErrorEvent) => {
+    return new Promise<void>((resolve: () => void, reject: (reason: Error) => void) => {
+        /**
+         * Handles errors during the module loading process
+         * @param error The error event
+         */
+        function moduleLoadingError(error: ErrorEvent): void {
             error.preventDefault();
-            reject(`Module error: ${error.message}`);
+            reject(new Error(`Module error: ${error.message}`));
         }
         window.addEventListener("error", moduleLoadingError);
-        do {
-            await Promise.all((Object as any).values(modules)).catch(error => reject(error));
-        } while (loadingModules());
-        window.removeEventListener("error", moduleLoadingError);
-        resolve();
+        void (async (): Promise<void> => {
+            try {
+                do {
+                    void await Promise.all(Object.values(modules));
+                } while (loadingModules());
+                resolve();
+            } catch (error: unknown) {
+                reject(error instanceof Error ? error : new Error(String(error)));
+            } finally {
+                window.removeEventListener("error", moduleLoadingError);
+            }
+        })();
     });
 }

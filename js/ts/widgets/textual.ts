@@ -11,6 +11,14 @@ type textualAlignmentHorizontal_t = ("left" | "right" | "center");
  */
 type textualAlignmentVertical_t = ("top" | "middle" | "bottom");
 /**
+ * The horizontal and vertical alignment configuration
+ * @internal
+ */
+interface textualAlignmentConfiguration {
+    horizontal: textualAlignmentHorizontal_t;
+    vertical: textualAlignmentVertical_t;
+};
+/**
  * The HTML attribute for horizontal alignment of a textual widget
  * @internal
  */
@@ -25,13 +33,18 @@ const textualAlignmentVerticalAttribute: string = "valign";
  * A textual widget used to show text
  */
 export abstract class textual_t extends widget_t {
-    public setConfiguration(configuration: Object, textualAlignmentHorizontalDefault: textualAlignmentHorizontal_t, textualAlignmentVerticalDefault: textualAlignmentVertical_t): void {
+    /**
+     * @param textualAlignmentHorizontalDefault default horizontal alignment
+     * @param textualAlignmentVerticalDefault default vertical alignment
+     * @inheritdoc
+     */
+    public override configuration(configuration: object, textualAlignmentHorizontalDefault: textualAlignmentHorizontal_t = "left", textualAlignmentVerticalDefault: textualAlignmentVertical_t = "middle"): void {
         if (!this.configurationHas(configuration, "text")) {
             throw this.configurationError(`A ${this.content.className} widget requires \`text\` to be shown`);
         }
-        this.content.innerText = (configuration as any).text as string;
+        this.content.innerText = String(this.configurationGet(configuration, "text"));
         if (this.configurationHas(configuration, "alignment")) {
-            const alignment: any = (configuration as any).alignment;
+            const alignment: textualAlignmentConfiguration = (this.configurationGet(configuration, "alignment") as textualAlignmentConfiguration);
             if (this.configurationHas(alignment, "horizontal")) {
                 const horizontalAlignment: textualAlignmentHorizontal_t = alignment.horizontal;
                 switch (horizontalAlignment) {
@@ -41,7 +54,7 @@ export abstract class textual_t extends widget_t {
                         this.content.setAttribute(textualAlignmentHorizontalAttribute, horizontalAlignment);
                         break;
                     default:
-                        throw this.configurationError(`"${horizontalAlignment}" is not a valid \`horizontal\` \`alignment\` for a ${this.content.className} widget`);
+                        throw this.configurationError(`"${String(horizontalAlignment)}" is not a valid \`horizontal\` \`alignment\` for a ${this.content.className} widget`);
                 }
             } else {
                 this.content.setAttribute(textualAlignmentHorizontalAttribute, textualAlignmentHorizontalDefault);
@@ -55,7 +68,7 @@ export abstract class textual_t extends widget_t {
                         this.content.setAttribute(textualAlignmentVerticalAttribute, verticalAlignment);
                         break;
                     default:
-                        throw this.configurationError(`"${verticalAlignment}" is not a valid \`vertical\` \`alignment\` for a ${this.content.className} widget`);
+                        throw this.configurationError(`"${String(verticalAlignment)}" is not a valid \`vertical\` \`alignment\` for a ${this.content.className} widget`);
                 }
             } else {
                 this.content.setAttribute(textualAlignmentVerticalAttribute, textualAlignmentVerticalDefault);
@@ -67,19 +80,21 @@ export abstract class textual_t extends widget_t {
         if (this.configurationHas(configuration, "color")) {
             /**
              * Valid whether a color is valid
-             * @param {string} color String to validate
-             * @returns {boolean} Whether the color is valid
+             * @param color String to validate
+             * @returns Whether the color is valid
              */
-            const isColor = (color: string): boolean => {
+            function isColor(color: string): boolean {
                 const style: CSSStyleDeclaration = new Option().style;
                 style.color = color;
                 return (style.color !== "");
-            }
-            const color: string = (configuration as any).color;
+            };
+            const color: string = String(this.configurationGet(configuration, "color"));
             if (!isColor(color)) {
                 throw this.configurationError(`"${color}" is not a valid \`color\` for a ${this.content.className} widget`);
             }
-            const textualShadowRoot: ShadowRoot = this.content.attachShadow({ mode: "closed" });
+            const textualShadowRoot: ShadowRoot = this.content.attachShadow({
+                mode: "closed"
+            });
             const noInheritedStyling: CSSStyleSheet = new CSSStyleSheet();
             noInheritedStyling.replaceSync(`:host{color:${color}!important}`);
             textualShadowRoot.adoptedStyleSheets = [noInheritedStyling];
@@ -87,9 +102,10 @@ export abstract class textual_t extends widget_t {
             textualShadowRoot.appendChild(slot);
         }
     }
-    public render(): Promise<HTMLElement> {
-        return new Promise<HTMLElement>((resolve, _reject) => {
-            resolve(this.content);
-        });
-    };
+    /**
+     * @inheritdoc
+     */
+    public async prepare(): Promise<void> {
+        return Promise.resolve();
+    }
 };

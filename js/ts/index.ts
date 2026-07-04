@@ -1,94 +1,106 @@
-// @ts-expect-error
+// @ts-expect-error: SCSS imports are handled by the custom esbuild plugin at build time.
 import splashStyling from "./splash.scss";
 
 import { gui_t } from "./gui";
-import { structure_t } from "./structure";
+import { structureGenerate } from "./structure";
 import { widget_t } from "./widgets/widget";
 import { loadStylesheet } from "./resources/stylesheet";
 import { registerCoreWidgets } from "./coreWidgets";
 import { exportToWindow, structureLoadEvent, structureLoadEventType } from "./exported";
 import { loadModule, loadModules } from "./resources/module";
 
-// @internal
+/**
+ * Asynchronously start SSS GUI generation
+ * @internal
+ */
 async function main(): Promise<void> {
     let projectName: string = "SSS";
     // Splash screen
     const splashContainer: HTMLBodyElement = document.createElement("body");
-    const splashShadowRoot: ShadowRoot = splashContainer.attachShadow({ "mode": "closed" });
+    const splashShadowRoot: ShadowRoot = splashContainer.attachShadow({
+        "mode": "closed"
+    });
     const noInheritedStyling: CSSStyleSheet = new CSSStyleSheet();
-    noInheritedStyling.replaceSync("*{all:initial;display:block;}" + splashStyling);
+    noInheritedStyling.replaceSync("*{all:initial;display:block;}" + (splashStyling as string));
     splashShadowRoot.adoptedStyleSheets = [noInheritedStyling];
     const splashContent: HTMLDivElement = document.createElement("div");
     const splashHeading: HTMLHeadingElement = document.createElement("h1");
     splashHeading.innerText = projectName;
     const splashStatus: HTMLParagraphElement = document.createElement("p");
     splashStatus.innerText = "Loading...";
+    /**
+     * Put the document into a error state
+     * @param error Error to show
+     */
     const setError = (error: string): void => {
         splashStatus.innerText = error;
-        splashStatus.classList.add("error")
+        splashStatus.classList.add("error");
         document.title = `Error | ${projectName}`;
     };
     splashContent.appendChild(splashHeading);
     splashContent.appendChild(splashStatus);
     splashShadowRoot.appendChild(splashContent);
     document.body.replaceWith(splashContainer);
-    await new Promise<void>(async (resolve, reject) => {
-        // Load GUI
-        let gui_data: (gui_t | null) = null;
+
+    try {
+        let gui_data: gui_t;
         try {
             gui_data = new gui_t();
             projectName = gui_data.project;
             splashHeading.innerText = projectName;
-        } catch (error: any) {
-            reject(error.message);
+        } catch (error: unknown) {
+            throw error instanceof Error ? error : new Error(String(error));
         }
+
         exportToWindow();
-        try {
-            // Start loading stylesheet
-            const stylesheet: Promise<void> = loadStylesheet(gui_data!.stylesheet);
-            registerCoreWidgets();
-            // Load modules
-            splashStatus.innerText = "Loading modules...";
-            gui_data!.modules.map(module => loadModule(module));
-            await loadModules();
-            // Load layouts
-            splashStatus.innerText = "Loading layout...";
-            await Promise.all([structure_t.generate(gui_data!.structure), stylesheet]).then((main: (void | widget_t)[]) => {
-                if (main[0] instanceof widget_t) {
-                    splashStatus.innerText = "Rending layout...";
-                    main[0].render().then((mainElement: HTMLElement) => {
-                        while (document.body.children.length > 0) {
-                            document.body.removeChild(document.body.children[0]);
-                        }
-                        document.documentElement.replaceChild(document.createElement("body"), splashContainer);
-                        document.body.appendChild(mainElement);
-                        document.title = gui_data!.name.trim();
-                        document.dispatchEvent(new CustomEvent<structureLoadEvent>(structureLoadEventType(), {
-                            detail: {
-                                success: true,
-                                message: undefined
-                            }
-                        }));
-                        resolve();
-                    }).catch((error) => {
-                        reject(error.message);
-                    });
+
+        // Start loading stylesheet
+        const stylesheet: Promise<void> = loadStylesheet(gui_data.stylesheet);
+        registerCoreWidgets();
+
+        // Load modules
+        splashStatus.innerText = "Loading modules...";
+        void gui_data.modules.map((module: string) => loadModule(module));
+        await loadModules();
+
+        // Load layouts
+        splashStatus.innerText = "Loading layout...";
+        const [mainWidget]: [widget_t, unknown] = await Promise.all([
+            structureGenerate(gui_data.structure),
+            stylesheet,
+        ]);
+
+        if (mainWidget instanceof widget_t) {
+            splashStatus.innerText = "Rending layout...";
+            const mainElement: HTMLElement = await mainWidget.render();
+
+            while (document.body.children.length > 0) {
+                document.body.removeChild(document.body.children[0]);
+            }
+            document.documentElement.replaceChild(document.createElement("body"), splashContainer);
+            document.body.appendChild(mainElement);
+            document.title = gui_data.name.trim();
+
+            document.dispatchEvent(new CustomEvent<structureLoadEvent>(structureLoadEventType(), {
+                detail: {
+                    success: true,
+                    message: undefined
                 }
-            }).catch((error: any) => {
-                reject((error instanceof Error) ? error.message : error);
-            });
-        } catch (error: any) {
-            reject(error);
+            }));
         }
-    }).catch((error: string) => {
-        setError(error);
+    } catch (error: unknown) {
+        const message: string = error instanceof Error ? error.message : String(error);
+        setError(message);
+        throw error;
         document.dispatchEvent(new CustomEvent<structureLoadEvent>(structureLoadEventType(), {
             detail: {
                 success: false,
-                message: error,
+                message: message,
             }
         }));
-    });
+    }
 }
 
-window.addEventListener("load", main);
+window.addEventListener("load", () => {
+    void main();
+});

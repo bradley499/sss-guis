@@ -1,28 +1,41 @@
 import { loadResource, multimediaResource_t } from "../resources/resource";
+import { structureDeclareWidget } from "../structure";
 import { widget_t } from "./widget";
 
 /**
  * An audio widget
  */
-export class audio_t extends widget_t {
-    constructor() {
-        super("audio", "audio");
-    };
+export class audio_t extends widget_t<HTMLAudioElement> {
     /**
      * @internal
-     */
+    */
     protected source!: string;
-    public configuration(configuration: Object): void {
+    /**
+     * @inheritdoc
+     */
+    constructor() {
+        super("audio");
+    }
+    /**
+     * @inheritdoc
+     */
+    public configuration(configuration: object): void {
         if (!this.configurationHas(configuration, "source")) {
             throw this.configurationError("Missing audio `source` for an audio widget");
         }
-        this.source = (configuration as any).source as string;
+        this.source = (this.configurationGet(configuration, "source") as string);
     }
-    public render(): Promise<HTMLElement> {
-        return new Promise<HTMLElement>((resolve, reject) => {
+    /**
+     * @inheritdoc
+     */
+    public async prepare(): Promise<void> {
+        return new Promise<void>((resolve: () => void, reject: (reason: Error) => void) => {
             loadResource(this.source).then((resource: multimediaResource_t) => {
-                const failure = (): void => {
-                    reject(`An audio resource of type "${resource.mimeType}" is not supported in this browser`);
+                /**
+                 * Failed to audio resource
+                 */
+                function failure(): void {
+                    reject(Error(`An audio resource of type "${resource.mimeType}" is not supported in this browser`));
                 }
                 switch ((this.content as HTMLVideoElement).canPlayType(resource.mimeType)) {
                     case "probably":
@@ -38,11 +51,18 @@ export class audio_t extends widget_t {
                 source.src = resource.blobUrl;
                 source.type = resource.mimeType;
                 this.content.appendChild(source);
-                (this.content as HTMLAudioElement).oncanplaythrough = () => resolve(this.content);
-                this.content.onerror = () => failure();
-                (this.content as HTMLAudioElement).load();
-                resolve(this.content);
-            }).catch((error) => reject(this.configurationError(error)));
+                this.content.addEventListener("canplaythrough", () => {
+                    resolve();
+                });
+                this.content.addEventListener("error", () => {
+                    failure();
+                });
+                this.content.load();
+            }).catch((error: unknown) => {
+                reject(this.configurationError(error));
+            });
         });
-    };
+    }
 };
+
+structureDeclareWidget("audio", audio_t);

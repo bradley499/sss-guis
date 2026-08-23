@@ -22,9 +22,10 @@ file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/" DESTINATION "${WORKING_DIRECTORY_LOCATI
 
 file(WRITE "${GENERATED_PACKAGE_JSON}"
 "{
-  \"name\": \"sss-guis\",
+  \"name\": \"@sss/sss-guis\",
   \"version\": \"${CMAKE_PROJECT_VERSION}\",
   \"description\": \"Typescript declaration file for creating compatible SSS widgets\",
+  \"main\": \"guis.mjs\",
   \"types\": \"guis.d.ts\"
 }
 ")

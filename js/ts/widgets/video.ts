@@ -1,4 +1,5 @@
 import { loadResource, multimediaResource_t } from "../resources/resource";
+import { structureDeclareWidget } from "../structure";
 import { widget_t } from "./widget";
 
 /**
@@ -10,42 +11,54 @@ type contain_t = ("fit" | "fill");
 /**
  * A video widget
  */
-export class video_t extends widget_t {
-    constructor() {
-        super("video", "video");
-    };
+export class video_t extends widget_t<HTMLVideoElement> {
     /**
      * @internal
-     */
+    */
     private source!: string;
-    public configuration(configuration: Object): void {
+    /**
+     * @inheritdoc
+     */
+    constructor() {
+        super("video");
+    }
+    /**
+     * @inheritdoc
+     */
+    public configuration(configuration: object): void {
         if (!this.configurationHas(configuration, "source")) {
             throw this.configurationError("Missing video `source` for a video widget");
         }
-        this.source = (configuration as any).source as string;
+        this.source = (this.configurationGet(configuration, "source") as string);
         if (this.configurationHas(configuration, "contain")) {
-            const contain: contain_t = (configuration as any).contain;
+            const contain: contain_t = (this.configurationGet(configuration, "contain") as contain_t);
             switch (contain) {
                 case "fit":
                 case "fill":
                     this.content.setAttribute("contain", contain);
                     break;
                 default:
-                    throw this.configurationError(`"${contain}" is not a valid \`contain\` property for a video widget`);
+                    throw this.configurationError(`"${String(contain)}" is not a valid \`contain\` property for a video widget`);
             }
         }
-    };
-    public render(): Promise<HTMLElement> {
-        return new Promise<HTMLElement>((resolve, reject) => {
+    }
+    /**
+     * @inheritdoc
+     */
+    public async prepare(): Promise<void> {
+        return new Promise<void>((resolve: () => void, reject: (reason: Error) => void) => {
             loadResource(this.source).then((resource: multimediaResource_t) => {
-                const failure = (): void => {
-                    reject(`A video resource of type "${resource.mimeType}" is not supported in this browser`);
+                /**
+                 * Failed to load video resource
+                 */
+                function failure(): void {
+                    reject(Error(`A video resource of type "${resource.mimeType}" is not supported in this browser`));
                 }
-                switch ((this.content as HTMLVideoElement).canPlayType(resource.mimeType)) {
+                switch (this.content.canPlayType(resource.mimeType)) {
                     case "probably":
                         break;
                     case "maybe":
-                        console.warn(`The browser cannot guarantee that a resource of type "${resource.mimeType}" is supported`);
+                        console.warn(`The browser cannot guarantee that a resource of type "${resource.mimeType}" is supported (${this.source})`);
                         break;
                     default:
                         failure();
@@ -56,10 +69,18 @@ export class video_t extends widget_t {
                 source.src = resource.blobUrl;
                 source.type = resource.mimeType;
                 this.content.appendChild(source);
-                (this.content as HTMLVideoElement).oncanplaythrough = () => resolve(this.content);
-                this.content.onerror = () => failure();
-                (this.content as HTMLVideoElement).load();
-            }).catch((error) => reject(this.configurationError(error)));
+                this.content.addEventListener("canplaythrough", (): void => {
+                    resolve();
+                });
+                this.content.addEventListener("error", (): void => {
+                    failure();
+                });
+                this.content.load();
+            }).catch((error: unknown) => {
+                reject(this.configurationError(error));
+            });
         });
-    };
+    }
 };
+
+structureDeclareWidget("video", video_t);

@@ -2,7 +2,6 @@
  * Interface for the GUI configuration
  * @internal
  */
-
 interface gui_schema_t {
     /**
      * The modules to load during startup of GUI
@@ -35,7 +34,7 @@ interface gui_schema_t {
  * The provided GUI configuration - expected to be available from host document
  * @internal
  */
-declare var gui: (gui_schema_t | undefined);
+declare const gui: (gui_schema_t | undefined);
 
 /**
  * The accessible GUI configuration
@@ -67,6 +66,9 @@ export class gui_t {
      * @internal
      */
     public stylesheet!: string;
+    /**
+     * Validates a GUI configuration
+     */
     constructor() {
         if (typeof gui === "undefined") {
             throw new Error("No GUI configuration was declared");
@@ -74,7 +76,7 @@ export class gui_t {
         this.modules = gui.modules;
         this.name = gui.name;
         this.project = gui.project;
-        this.structure = gui.structure
+        this.structure = gui.structure;
         this.stylesheet = gui.stylesheet;
     }
 }

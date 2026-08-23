@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.14)
 set(PROJECT_NAME sss-guis)
 project(${PROJECT_NAME}
         LANGUAGES CXX
-        VERSION 0.8.7
+        VERSION 0.8.8
         DESCRIPTION "An extensible YAML to graphical web application system")
 
 include(GNUInstallDirs)

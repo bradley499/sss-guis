@@ -5,9 +5,9 @@ import { gui_t } from "./gui";
 import { structureGenerate } from "./structure";
 import { widget_t } from "./widgets/widget";
 import { loadStylesheet } from "./resources/stylesheet";
-import { registerCoreWidgets } from "./coreWidgets";
 import { exportToWindow, structureLoadEvent, structureLoadEventType } from "./exported";
 import { loadModule, loadModules } from "./resources/module";
+import "./coreWidgets";
 
 /**
  * Asynchronously start SSS GUI generation
@@ -56,7 +56,6 @@ async function main(): Promise<void> {
 
         // Start loading stylesheet
         const stylesheet: Promise<void> = loadStylesheet(gui_data.stylesheet);
-        registerCoreWidgets();
 
         // Load modules
         splashStatus.innerText = "Loading modules...";
@@ -91,7 +90,6 @@ async function main(): Promise<void> {
     } catch (error: unknown) {
         const message: string = error instanceof Error ? error.message : String(error);
         setError(message);
-        throw error;
         document.dispatchEvent(new CustomEvent<structureLoadEvent>(structureLoadEventType(), {
             detail: {
                 success: false,

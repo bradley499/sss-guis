@@ -1,10 +1,10 @@
-import { structureWidget, widgetIdentifier_t } from "../structure";
-import { widget_t } from "./widget";
+import { structureDeclareWidget, structureWidget } from "../structure";
+import { widget_t, widgetIdentifier_t } from "./widget";
 
 /**
  * A container widget
  */
-export class container_t extends widget_t {
+export class container_t extends widget_t<HTMLFieldSetElement> {
     /**
      * @internal
     */
@@ -17,7 +17,7 @@ export class container_t extends widget_t {
      * @inheritdoc
      */
     constructor() {
-        super("fieldset", "container");
+        super("fieldset");
     }
     /**
      * @inheritdoc
@@ -48,3 +48,5 @@ export class container_t extends widget_t {
         this.content.appendChild(object);
     }
 };
+
+structureDeclareWidget("container", container_t);

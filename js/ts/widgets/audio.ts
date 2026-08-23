@@ -1,11 +1,11 @@
 import { loadResource, multimediaResource_t } from "../resources/resource";
+import { structureDeclareWidget } from "../structure";
 import { widget_t } from "./widget";
 
 /**
  * An audio widget
  */
-export class audio_t extends widget_t {
-    protected override content!: HTMLAudioElement;
+export class audio_t extends widget_t<HTMLAudioElement> {
     /**
      * @internal
     */
@@ -14,7 +14,7 @@ export class audio_t extends widget_t {
      * @inheritdoc
      */
     constructor() {
-        super("audio", "audio");
+        super("audio");
     }
     /**
      * @inheritdoc
@@ -64,3 +64,5 @@ export class audio_t extends widget_t {
         });
     }
 };
+
+structureDeclareWidget("audio", audio_t);

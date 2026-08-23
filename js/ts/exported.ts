@@ -2,8 +2,8 @@ import { dialog } from "./modals/dialog";
 import { loadModule } from "./resources/module";
 import { loadResource, type multimediaResource_t } from "./resources/resource";
 import { loadStylesheet } from "./resources/stylesheet";
-import { structureDeclareWidget, structureWidget, structureWidgetExists, type widgetIdentifier_t } from "./structure";
-import { widget_t } from "./widgets/widget";
+import { structureDeclareWidget, structureWidget, structureWidgetExists } from "./structure";
+import { widget_t, type widgetIdentifier_t } from "./widgets/widget";
 
 export { dialog, loadModule, loadResource, loadStylesheet, multimediaResource_t, structureDeclareWidget, structureWidget, structureWidgetExists, widget_t, widgetIdentifier_t};
 

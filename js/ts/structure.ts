@@ -1,4 +1,4 @@
-import { widget_t } from "./widgets/widget";
+import { widget_t, type widgetIdentifier_t } from "./widgets/widget";
 
 /**
  * Tuple structure of widget contents: type of widget, configuration of widget
@@ -46,10 +46,6 @@ enum widgetData_t {
      */
     widgetDataConfiguration = 1,
 }
-/**
- * The type of a widget reference identifier
- */
-export type widgetIdentifier_t = (string | number);
 /**
  * Declarations of widget types and factory
  * @internal
@@ -134,6 +130,7 @@ export function structureWidget(identifier: widgetIdentifier_t): widget_t {
         throw new Error(`Unable to create widget of "${type}" which is an unknown widget type`);
     }
     const generatedWidget: widget_t = widgetDeclarations[type]();
+    generatedWidget.configurationType(type);
     generatedWidget.configurationName(identifier.toString());
     generatedWidget.configuration((structure.widgets as Record<string | number, structure_widget_schema_t>)[identifier][widgetData_t.widgetDataConfiguration] ?? {});
     return generatedWidget;

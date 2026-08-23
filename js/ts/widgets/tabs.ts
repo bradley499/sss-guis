@@ -1,5 +1,5 @@
-import { structureWidget, widgetIdentifier_t } from "../structure";
-import { widget_t } from "./widget";
+import { structureDeclareWidget, structureWidget } from "../structure";
+import { widget_t, type widgetIdentifier_t } from "./widget";
 
 /**
  * Widgets that are stored children of a tabs
@@ -22,7 +22,7 @@ interface tabItemsConfiguration {
 /**
  * A tabs widget
  */
-export class tabs_t extends widget_t {
+export class tabs_t extends widget_t<HTMLDivElement> {
     /**
      * @internal
     */
@@ -35,7 +35,7 @@ export class tabs_t extends widget_t {
      * @inheritdoc
      */
     constructor() {
-        super("div", "tabs");
+        super("div");
     }
     /**
      * @inheritdoc
@@ -129,3 +129,5 @@ export class tabs_t extends widget_t {
         this.content.appendChild(tabView);
     }
 };
+
+structureDeclareWidget("tabs", tabs_t);

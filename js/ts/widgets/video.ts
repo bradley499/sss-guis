@@ -1,4 +1,5 @@
 import { loadResource, multimediaResource_t } from "../resources/resource";
+import { structureDeclareWidget } from "../structure";
 import { widget_t } from "./widget";
 
 /**
@@ -10,8 +11,7 @@ type contain_t = ("fit" | "fill");
 /**
  * A video widget
  */
-export class video_t extends widget_t {
-    protected override content!: HTMLVideoElement;
+export class video_t extends widget_t<HTMLVideoElement> {
     /**
      * @internal
     */
@@ -20,7 +20,7 @@ export class video_t extends widget_t {
      * @inheritdoc
      */
     constructor() {
-        super("video", "video");
+        super("video");
     }
     /**
      * @inheritdoc
@@ -82,3 +82,5 @@ export class video_t extends widget_t {
         });
     }
 };
+
+structureDeclareWidget("video", video_t);

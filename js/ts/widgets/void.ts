@@ -1,14 +1,15 @@
+import { structureDeclareWidget } from "../structure";
 import { widget_t } from "./widget";
 
 /**
  * A purposely blank widget to fill space
  */
-export class void_t extends widget_t {
+export class void_t extends widget_t<HTMLDivElement> {
     /**
      * @inheritdoc
      */
     constructor() {
-        super("div", "void");
+        super("div");
     }
     /**
      * @inheritdoc
@@ -30,3 +31,5 @@ export class void_t extends widget_t {
         return Promise.resolve();
     }
 };
+
+structureDeclareWidget("null", void_t);

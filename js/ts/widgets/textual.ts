@@ -32,7 +32,7 @@ const textualAlignmentVerticalAttribute: string = "valign";
 /**
  * A textual widget used to show text
  */
-export abstract class textual_t extends widget_t {
+export abstract class textual_t<baseType extends HTMLElement> extends widget_t<baseType> {
     /**
      * @param textualAlignmentHorizontalDefault default horizontal alignment
      * @param textualAlignmentVerticalDefault default vertical alignment

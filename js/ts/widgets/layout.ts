@@ -1,6 +1,6 @@
-import { structureWidget, widgetIdentifier_t } from "../structure";
+import { structureDeclareWidget, structureWidget } from "../structure";
 import { void_t } from "./void";
-import { widget_t } from "./widget";
+import { widget_t, widgetIdentifier_t } from "./widget";
 
 /**
  * Widgets that are stored children of a layout
@@ -11,7 +11,7 @@ type subWidget_t = widget_t;
 /**
  * A layout widget
  */
-export class layout_t extends widget_t {
+export class layout_t extends widget_t<HTMLDivElement> {
     /**
      * @internal
     */
@@ -20,7 +20,7 @@ export class layout_t extends widget_t {
      * @inheritdoc
      */
     constructor() {
-        super("div", "layout");
+        super("div");
     }
     /**
      * @inheritdoc
@@ -123,3 +123,5 @@ export class layout_t extends widget_t {
         }
     }
 };
+
+structureDeclareWidget("layout", layout_t);

@@ -1,4 +1,5 @@
 import { loadResource, multimediaResource_t } from "../resources/resource";
+import { structureDeclareWidget } from "../structure";
 import { widget_t } from "./widget";
 
 /**
@@ -10,8 +11,7 @@ type contain_t = ("fit" | "fill");
 /**
  * An image widget
  */
-export class image_t extends widget_t {
-    protected override content!: HTMLImageElement;
+export class image_t extends widget_t<HTMLImageElement> {
     /**
      * @internal
     */
@@ -20,7 +20,7 @@ export class image_t extends widget_t {
      * @inheritdoc
      */
     constructor() {
-        super("img", "image");
+        super("img");
     }
     /**
      * @inheritdoc
@@ -61,3 +61,5 @@ export class image_t extends widget_t {
         });
     };
 };
+
+structureDeclareWidget("image", image_t);

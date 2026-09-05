@@ -1,3 +1,0 @@
-example_image:
-  type: image
-  source: !file ../static_files/image.png

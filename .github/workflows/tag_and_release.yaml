@@ -37,7 +37,9 @@ jobs:
         with:
           tag_name: v${{ steps.cmake_version.outputs.version }}
           name: Release v${{ steps.cmake_version.outputs.version }}
-          files: build/*.deb
+          files: |
+            build/*.deb
+            build/js/js-gen/*.tgz
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

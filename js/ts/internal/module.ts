@@ -1,4 +1,4 @@
-import { loadResource, multimediaResource_t } from "./resource";
+import { loadResource, multimediaResource } from "../resource";
 
 /**
  * Collection of modules with associated promises
@@ -16,6 +16,7 @@ let modulesLoaded: number = 0;
  * @async
  * @param url The location of the module
  * @returns Success of the loading of the module
+ * @internal
  */
 export function loadModule(url: string): Promise<void> {
     if (url in modules) {
@@ -28,7 +29,7 @@ export function loadModule(url: string): Promise<void> {
         function failure(): void {
             reject(new Error(`Failed to load module: ${url}`));
         };
-        loadResource(url).then((resource: multimediaResource_t) => {
+        loadResource(url).then((resource: multimediaResource) => {
             const module: HTMLScriptElement = document.createElement("script");
             module.type = "module";
             module.src = resource.blobUrl;
@@ -52,6 +53,7 @@ export function loadModule(url: string): Promise<void> {
 /**
  * Checks whether any modules are yet to be successfully loaded
  * @returns Whether modules are yet to be successfully loaded
+ * @internal
  */
 function loadingModules(): boolean {
     return (modulesLoaded != Object.keys(modules).length);
@@ -59,6 +61,7 @@ function loadingModules(): boolean {
 /**
  * Wait for all modules to load
  * @returns Success of loading all of the modules
+ * @internal
  */
 export function loadModules(): Promise<void> {
     return new Promise<void>((resolve: () => void, reject: (reason: Error) => void) => {

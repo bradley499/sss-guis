@@ -1,10 +1,11 @@
-import { loadResource, multimediaResource_t } from "./resource";
+import { loadResource, multimediaResource } from "../resource";
 
 /**
  * Asynchronously load a stylesheet
  * @async
  * @param url The location of the stylesheet
  * @returns Success of the loading of the stylesheet
+ * @internal
  */
 export function loadStylesheet(url: string): Promise<void> {
     return new Promise<void>((resolve: () => void, reject: (reason: Error) => void) => {
@@ -14,7 +15,7 @@ export function loadStylesheet(url: string): Promise<void> {
         function failure(): void {
             reject(new Error(`Failed to load stylesheet: ${url}`));
         };
-        loadResource(url).then((resource: multimediaResource_t): void => {
+        loadResource(url).then((resource: multimediaResource): void => {
             const stylesheet: HTMLLinkElement = document.createElement("link");
             stylesheet.rel = "stylesheet";
             stylesheet.type = resource.mimeType;

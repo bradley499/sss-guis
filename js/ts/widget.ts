@@ -1,12 +1,12 @@
 /**
  * The type of a widget reference identifier
  */
-export type widgetIdentifier_t = (string | number);
+export type widgetIdentifier = (string | number);
 /**
  * Configurable properties set on a widget
  * @internal
  */
-interface widgetConfigurationPropertiesSet_t {
+interface widgetConfigurationPropertiesSet {
     /**
      * The type has been set
      */
@@ -17,30 +17,35 @@ interface widgetConfigurationPropertiesSet_t {
     name: boolean;
 };
 /**
- * @abstract Base widget class
- * @template baseType The underlying HTMLElement type for the widget
+ * Resolves the underlying HTMLElement type from an HTMLElement type or tag string
  */
-export abstract class widget_t<baseType extends HTMLElement = HTMLElement> {
+export type widgetElement<T extends (HTMLElement | string)> = (T extends HTMLElement ? T : (T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : HTMLElement));
+
+/**
+ * @abstract Base widget class
+ * @template T The underlying HTMLElement type or HTML tag string (e.g. HTMLDivElement or "div")
+ */
+export abstract class widget<T extends (HTMLElement | string) = HTMLElement> {
     /**
      * Main content of the widget
      */
-    protected readonly content: baseType;
+    protected readonly content: widgetElement<T>;
     /**
      * Whether the properties of the widget have been configured
      */
-    private configurationPropertiesSet: widgetConfigurationPropertiesSet_t = {
+    private configurationPropertiesSet: widgetConfigurationPropertiesSet = {
         type: false,
         name: false,
     };
     /**
      * Construct a base widget
-     * @param baseTypeTag The tag of the base type to construct the widget from
+     * @param tag The tag of the base type to construct the widget from
      */
-    constructor(baseTypeTag: string) {
+    constructor(tag: string) {
         try {
-            this.content = (document.createElement(baseTypeTag) as baseType);
+            this.content = (document.createElement(tag) as widgetElement<T>);
         } catch {
-            throw new Error(`Unknown widget base type: ${baseTypeTag}`);
+            throw new Error(`Unknown widget base type: ${tag}`);
         }
     }
     /**
@@ -78,13 +83,9 @@ export abstract class widget_t<baseType extends HTMLElement = HTMLElement> {
      * @param name Name of widget
      * @internal
      */
-    public configurationName(name: widgetIdentifier_t): void {
-        const originalName: (string | null) = this.content.getAttribute("name");
+    public configurationName(name: widgetIdentifier): void {
         if (!["string", "number"].includes(typeof name)) {
             throw new Error("Widget name is invalid");
-        }
-        if (originalName !== null) {
-            console.warn(`The widget named "${originalName}" is being renamed to "${String(name)}"`);
         }
         if (this.configurationPropertiesSet.name) {
             throw new Error("Widget name has already been configured");
@@ -123,18 +124,20 @@ export abstract class widget_t<baseType extends HTMLElement = HTMLElement> {
     }
     /**
      * Get a configuration property
+     * @template T The expected type of the property
      * @param configuration Configuration to abstract property from
      * @param property The property to abstract
      * @returns Configuration property
      * @throws Error when property does not exist
      */
-    protected configurationGet(configuration: object, property: string): unknown {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
+    protected configurationGet<Type = unknown>(configuration: object, property: string): Type {
         try {
             const value: unknown = (configuration as Record<string, unknown>)[property];
             if (value === undefined) {
                 throw new Error();
             }
-            return value;
+            return (value as Type);
         } catch {
             throw this.configurationError(`Configuration does not have an entity named "${property}"`);
         }

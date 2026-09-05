@@ -121,8 +121,7 @@ example_grid:
    - object: reference_to_first_widget
    - object: reference_to_second_widget
    - object: reference_to_third_widget
-````
-
+```
 
 ## Additional widget modules
 This GUI system is modular - by design - and can be easily extended by external projects, provided that new externally provided widgets inherit from the `widget` TypeScript class, and are made known to the widget rendering subsystem. All exported TypeScript declarations are generated at compile time. Any additional widget module must be built into a bundle.
@@ -130,16 +129,13 @@ This GUI system is modular - by design - and can be easily extended by external 
 ## Stylesheet
 A stylesheet must be provided for each GUI!
 
-## Example
-There is a directory named [`example`](example) within this project. This is a very simple example to showcase how to construct a collection of GUIs containing some example widgets. To generate a GUI based on the contents within the [`example`](example) directory, please follow one of the following approaches:
-
-### Executable
+## Executable
 Additional arguments are allowed.
 ```console
 sss-guis example/configuration.yaml generated_directory
 ```
 
-### Library (C++)
+## Library (C++)
 The parameters of the `generate` method can be modified.
 ```cpp
 sss::guis::guis_t("example/configuration.yaml", "generated_directory").generate(false, false, nullptr);

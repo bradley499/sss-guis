@@ -1,13 +1,11 @@
-// @ts-expect-error: SCSS imports are handled by the custom esbuild plugin at build time.
 import splashStyling from "./splash.scss";
 
-import { gui_t } from "./gui";
-import { structureGenerate } from "./structure";
-import { widget_t } from "./widgets/widget";
-import { loadStylesheet } from "./resources/stylesheet";
-import { exportToWindow, structureLoadEvent, structureLoadEventType } from "./exported";
-import { loadModule, loadModules } from "./resources/module";
-import "./coreWidgets";
+import { getGui, guiSchema } from "./gui";
+import { structureGenerate, structureLoadEvent, structureLoadEventType } from "../structure";
+import { widget } from "../widget";
+import { loadStylesheet } from "./stylesheet";
+import { loadModule, loadModules } from "./module";
+import "./grid";
 
 /**
  * Asynchronously start SSS GUI generation
@@ -43,33 +41,31 @@ async function main(): Promise<void> {
     document.body.replaceWith(splashContainer);
 
     try {
-        let gui_data: gui_t;
+        let gui: guiSchema;
         try {
-            gui_data = new gui_t();
-            projectName = gui_data.project;
+            gui = getGui();
+            projectName = gui.project;
             splashHeading.innerText = projectName;
         } catch (error: unknown) {
             throw error instanceof Error ? error : new Error(String(error));
         }
 
-        exportToWindow();
-
         // Start loading stylesheet
-        const stylesheet: Promise<void> = loadStylesheet(gui_data.stylesheet);
+        const stylesheet: Promise<void> = loadStylesheet(gui.stylesheet);
 
         // Load modules
         splashStatus.innerText = "Loading modules...";
-        void gui_data.modules.map((module: string) => loadModule(module));
+        void gui.modules.map((module: string) => loadModule(module));
         await loadModules();
 
         // Load layouts
         splashStatus.innerText = "Loading layout...";
-        const [mainWidget]: [widget_t, unknown] = await Promise.all([
-            structureGenerate(gui_data.structure),
+        const [mainWidget]: [widget, unknown] = await Promise.all([
+            structureGenerate(gui.structure),
             stylesheet,
         ]);
 
-        if (mainWidget instanceof widget_t) {
+        if (mainWidget instanceof widget) {
             splashStatus.innerText = "Rending layout...";
             const mainElement: HTMLElement = await mainWidget.render();
 
@@ -78,9 +74,9 @@ async function main(): Promise<void> {
             }
             document.documentElement.replaceChild(document.createElement("body"), splashContainer);
             document.body.appendChild(mainElement);
-            document.title = gui_data.name.trim();
+            document.title = gui.name.trim();
 
-            document.dispatchEvent(new CustomEvent<structureLoadEvent>(structureLoadEventType(), {
+            document.dispatchEvent(new CustomEvent<structureLoadEvent>(structureLoadEventType, {
                 detail: {
                     success: true,
                     message: undefined
@@ -90,7 +86,7 @@ async function main(): Promise<void> {
     } catch (error: unknown) {
         const message: string = error instanceof Error ? error.message : String(error);
         setError(message);
-        document.dispatchEvent(new CustomEvent<structureLoadEvent>(structureLoadEventType(), {
+        document.dispatchEvent(new CustomEvent<structureLoadEvent>(structureLoadEventType, {
             detail: {
                 success: false,
                 message: message,

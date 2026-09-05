@@ -1,7 +1,7 @@
 /**
  * Interface for the multimedia resource
  */
-export interface multimediaResource_t {
+export interface multimediaResource {
     /**
      * The URL to access the resource at
      */
@@ -16,7 +16,7 @@ export interface multimediaResource_t {
  * Collection of resources with associated promises
  * @internal
  */
-const resources: Record<string, Promise<multimediaResource_t>> = {};
+const resources: Record<string, Promise<multimediaResource>> = {};
 
 /**
  * Asynchronously load a resource
@@ -24,11 +24,11 @@ const resources: Record<string, Promise<multimediaResource_t>> = {};
  * @param url The location of the resource
  * @returns The loaded resource
  */
-export function loadResource(url: string): Promise<multimediaResource_t> {
+export function loadResource(url: string): Promise<multimediaResource> {
     if (url in resources) {
         return resources[url];
     }
-    const blob: Promise<multimediaResource_t> = new Promise<multimediaResource_t>((resolve: (value: multimediaResource_t) => void, reject: (reason: Error) => void) => {
+    const blob: Promise<multimediaResource> = new Promise<multimediaResource>((resolve: (value: multimediaResource) => void, reject: (reason: Error) => void) => {
         /**
          * Failed to load multimedia resource
          */
@@ -40,7 +40,7 @@ export function loadResource(url: string): Promise<multimediaResource_t> {
                 failure();
             }
             const blob: Blob = await response.blob();
-            const resource: multimediaResource_t = {
+            const resource: multimediaResource = {
                 blobUrl: URL.createObjectURL(blob),
                 mimeType: blob.type
             };

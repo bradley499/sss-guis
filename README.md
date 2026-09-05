@@ -102,91 +102,33 @@ Depending on whether you use the executable or a library version of this project
 Use the `--help` or `-h` argument on the executable to see the specific arguments to use.
 
 ## Core widgets
-The following widgets are built into the core GUI system and can be directly used via setting a widget's `type` property to one of the following:
-
-### Structural
-#### `layout`
-Used to define a grid structure that houses widgets within each cell.
+### `grid`
+The `grid` widget can be used to arrange subsequent widgets in a singular direction.
 |Property|Type|Meaning|
 |-|-|-|
-|`rows`|Sequence (list) of `number`s|The ratios that the `rows` will occupy. If the number is `0` then that lets the widget occupy the minimum amount of space that it needs.|
-|`columns`|Sequence (list) of `number`s|The ratios that the `columns` will occupy. If the number is `0` then that lets the widget occupy the minimum amount of space that it needs.|
-|`items`|Sequence (list) of `object` references|A collection of `object` references to other widgets. The collection must not be larger than would fit in the amount of defined `rows` and `columns`.|
+|`layout`|`string`|The direction of the grid - either: "vertical", or "horizontal".|
+|`ratios`|Sequence (list) of `number`s or `string`|The size ratio for each item. Use "auto" to give a widget the minimum space it needs. Use a positive number to give it a proportional fraction of the space. Each ratio corresponds to the item of at the same index.|
+|`items`|Sequence (list) of `object` references|The list of widgets to put in the grid. The number of items must be equal to the number of ratios.|
 |`gap`|`boolean`|*Optional* - If there should be no gap between the items (overrides stylesheet).|
 
-#### `container`
-Wraps a child widget within a named container.
-|Property|Type|Meaning|
-|-|-|-|
-|`title`|`string` or `number`|The title that should be given to the container.|
-|`object`|`object`|The child object of the container.|
+#### Example `grid` YAML
+```yaml
+example_grid:
+  type: grid
+  layout: horizontal
+  ratios: [2, 1, 2]
+  items:
+   - object: reference_to_first_widget
+   - object: reference_to_second_widget
+   - object: reference_to_third_widget
+````
 
-#### `tabs`
-Have a tabular collection of widgets with corresponding names for each view.
-|Property|Type|Meaning|
-|-|-|-|
-|`items`|Sequence (list) of [`Tab items`](#tab-items)|See [Tab items](#tab-items).|
-|`position`|`string`|*Optional* - The location of the tab buttons: "top", "bottom", "left", or "right".|
-##### Tab items
-|Property|Type|Meaning|
-|-|-|-|
-|`name`|`string` or `number`|The name of the tab|
-|`object`|`object`|The object to be shown on the tab.|
 
-#### `null`
-Does not have anything that is shown to a user of the GUI. This widget can be used to fill space.
-
-### Textual
-#### `banner`
-Used to show large text.
-|Property|Type|Meaning|
-|-|-|-|
-|`text`|`string` or `number` or `boolean`|The text to be shown.|
-|`alignment`|[`Textual alignment`](#textual-alignment)|*Optional* - See [Textual alignment](#textual-alignment)|
-|`color`|`string`|*Optional* - The color of the text. Must be a valid CSS color.|
-
-#### `text`
-Used to show a lot of text.
-|Property|Type|Meaning|
-|-|-|-|
-|`text`|`string` or `number` or `boolean`|The text to be shown.|
-|`alignment`|[`Textual alignment`](#textual-alignment)|*Optional* - See [Textual alignment](#textual-alignment)|
-|`color`|`string`|*Optional* - The color of the text. Must be a valid CSS color.|
-
-#### Textual alignment
-|Property|Type|Meaning|
-|-|-|-|
-|`horizontal`|`string`|*Optional* - The horizontal alignment of the text: "left", "center", or "right".|
-|`vertical`|`string`|*Optional* - The vertical alignment of the text: "top", "middle", or "bottom".|
-
-### Multimedia
-#### `audio`
-Used to load an audio player into the GUI. This widget checks whether the GUI environment supports the audio format.
-|Property|Type|Meaning|
-|-|-|-|
-|`source`|`string`|The location of the audio source file.|
-
-#### `image`
-Used to load an image into the GUI. This widget checks whether the GUI environment supports the image format.
-|Property|Type|Meaning|
-|-|-|-|
-|`source`|`string`|The location of the image source file.|
-|`contain`|`string`|*Optional* - This can be set to either to: "fit" the image fit its entire content within the widget, or "fill" the entire widget with the content (some content may be lost).|
-
-#### `video`
-Used to load an video player into the GUI. This widget checks whether the GUI environment supports the video format.
-|Property|Type|Meaning|
-|-|-|-|
-|`source`|`string`|The location of the video source file.|
-|`contain`|`string`|*Optional* - This can be set to either to: "fit" the video fit its entire content within the widget, or "fill" the entire widget with the content (some content may be lost).|
-
-### Additional widget modules
-This GUI system is modular - by design - and can be easily extended by external projects, provided that new externally provided widgets inherit from the `widget_t` TypeScript class, and are made known to the widget rendering subsystem. All exported TypeScript declarations are generated at compile time, and are populated into the build artifact `guis.d.ts`.
+## Additional widget modules
+This GUI system is modular - by design - and can be easily extended by external projects, provided that new externally provided widgets inherit from the `widget` TypeScript class, and are made known to the widget rendering subsystem. All exported TypeScript declarations are generated at compile time. Any additional widget module must be built into a bundle.
 
 ## Stylesheet
-This project is part of a broader collection of repositories. To make the best use of this project, please use a stylesheet. Stylesheets are designed to be configurable and extensible; but as a minimum requirement the core components of the following stylesheet must be used: [sss-guis-stylesheet-core](https://github.com/bradley499/sss-guis-stylesheet-core).
-
-An example of a complete stylesheet built to make full use of the [Core Widgets](#core-widgets), can be found at [sss-guis-stylesheet-default](https://github.com/bradley499/sss-guis-stylesheet-default).
+A stylesheet must be provided for each GUI!
 
 ## Example
 There is a directory named [`example`](example) within this project. This is a very simple example to showcase how to construct a collection of GUIs containing some example widgets. To generate a GUI based on the contents within the [`example`](example) directory, please follow one of the following approaches:

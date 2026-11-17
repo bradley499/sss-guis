@@ -111,7 +111,7 @@ int main(int argc, char const *argv[])
     handle_arguments(argc, argv);
     try
     {
-        guis_t(configuration_file, output_directory).generate(!allow_conflicts, flatten_dependencies, verbose_stream);
+        Guis(configuration_file, output_directory).generate(!allow_conflicts, flatten_dependencies, verbose_stream);
         return EXIT_SUCCESS;
     }
     catch (const std::exception &e)

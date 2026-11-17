@@ -222,7 +222,7 @@ namespace
     }
 }
 
-generation_t::generation_t(std::filesystem::path const &configuration_file, std::filesystem::path const &output_directory)
+Generation::Generation(std::filesystem::path const &configuration_file, std::filesystem::path const &output_directory)
     : m_guis({}),
       m_dependencies({}),
       m_configuration_directory(std::filesystem::absolute(configuration_file.lexically_normal()).parent_path()),
@@ -255,7 +255,7 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
     {
         if (!gui_node.IsMap())
             throw std::runtime_error("Expected `gui` to hold a defined configuration on line " + std::to_string(yaml_node_line_number(gui_node)) + " of \"" + configuration_file.string() + "\"");
-        gui_t current_gui_data = {};
+        Gui current_gui_data = {};
 
         // Check whether core configuration strings are present
         for (std::string const field : {"name", "config", "stylesheet"})
@@ -409,7 +409,7 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
                     }
                     try
                     {
-                        for (auto &&dependency : dependencies_t(dependency_path).paths())
+                        for (auto &&dependency : Dependencies(dependency_path).paths())
                             m_dependencies[std::filesystem::weakly_canonical(dependency.lexically_relative(m_configuration_directory))] = convert_absolute_path_to_relative(dependency, m_configuration_directory);
                     }
                     catch (std::exception const &e)
@@ -442,13 +442,13 @@ generation_t::generation_t(std::filesystem::path const &configuration_file, std:
         throw std::runtime_error("There is already a file located as the output directory location");
 }
 
-generation_t::~generation_t()
+Generation::~Generation()
 {
     m_guis.clear();
     m_dependencies.clear();
 }
 
-void generation_t::generate(generation_t::gui_t const &data, std::string const &guis_js_path, path_register_dependency_t const &register_dependency_callback, std::ostream const *debug_stream)
+void Generation::generate(Generation::Gui const &data, std::string const &guis_js_path, PathRegisterDependency const &register_dependency_callback, std::ostream const *debug_stream)
 {
     std::string const relative_adjustment = [&]
     {
@@ -458,7 +458,7 @@ void generation_t::generate(generation_t::gui_t const &data, std::string const &
         return parent_path;
     }();
 
-    path_register_dependency_t const register_dependency_callback_wrapper = [relative_adjustment, register_dependency_callback](std::filesystem::path const &file_path)
+    PathRegisterDependency const register_dependency_callback_wrapper = [relative_adjustment, register_dependency_callback](std::filesystem::path const &file_path)
     {
         return relative_adjustment + register_dependency_callback(file_path);
     };
@@ -467,7 +467,7 @@ void generation_t::generate(generation_t::gui_t const &data, std::string const &
     try
     {
         // Generate structure
-        structure_t structure_parser(data.name, debug_stream);
+        Structure structure_parser(data.name, debug_stream);
         if (data.widget_defaults.has_value())
         {
             try
@@ -527,7 +527,7 @@ void generation_t::generate(generation_t::gui_t const &data, std::string const &
     write_file((m_output_directory / structure_file).string(), structure);
 }
 
-std::filesystem::path generation_t::unique_filename(std::string const &extension)
+std::filesystem::path Generation::unique_filename(std::string const &extension)
 {
     static std::mutex unique_filename_mutex;
     std::lock_guard<std::mutex> lock(unique_filename_mutex);
@@ -565,7 +565,7 @@ std::filesystem::path generation_t::unique_filename(std::string const &extension
     }
 }
 
-void generation_t::build_all(bool const disallow_conflicts, bool const flatten_dependency_references, std::ostream const *debug_stream)
+void Generation::build_all(bool const disallow_conflicts, bool const flatten_dependency_references, std::ostream const *debug_stream)
 {
     std::filesystem::copy_options copy_options = std::filesystem::copy_options::recursive;
     if (disallow_conflicts)
@@ -667,7 +667,7 @@ void generation_t::build_all(bool const disallow_conflicts, bool const flatten_d
 
     std::mutex register_dependency_mutex;
 
-    path_register_dependency_t const register_dependency = [&](std::filesystem::path const &file_path)
+    PathRegisterDependency const register_dependency = [&](std::filesystem::path const &file_path)
     {
         std::filesystem::path absolute_file_path = std::filesystem::absolute(file_path.lexically_normal());
         if (!std::filesystem::exists(absolute_file_path))

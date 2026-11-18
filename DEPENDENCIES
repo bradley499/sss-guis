@@ -1,5 +1,6 @@
 cmake
 g++
+libgtest-dev
 libyaml-cpp-dev
 nlohmann-json3-dev
 nodejs

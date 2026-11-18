@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.14)
 set(PROJECT_NAME sss-guis)
 project(${PROJECT_NAME}
         LANGUAGES CXX
-        VERSION 0.10.1
+        VERSION 0.11.0
         DESCRIPTION "An extensible YAML to graphical web application system")
 
 include(GNUInstallDirs)
@@ -61,6 +61,7 @@ set_target_properties(${LIBRARY_NAME} PROPERTIES
 
 target_include_directories(${LIBRARY_NAME} PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
@@ -86,6 +87,12 @@ if (SSS_GUIS_BUILD_EXECUTABLE)
     install(TARGETS ${EXECUTABLE_NAME}
             DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
+endif()
+
+option(SSS_GUIS_BUILD_TESTS "Build unit tests" ON)
+if (SSS_GUIS_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif()
 
 install(TARGETS ${LIBRARY_NAME}

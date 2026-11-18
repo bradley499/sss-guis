@@ -107,20 +107,27 @@ The `grid` widget can be used to arrange subsequent widgets in a singular direct
 |Property|Type|Meaning|
 |-|-|-|
 |`layout`|`string`|The direction of the grid - either: "vertical", or "horizontal".|
-|`ratios`|Sequence (list) of `number`s or `string`|The size ratio for each item. Use "auto" to give a widget the minimum space it needs. Use a positive number to give it a proportional fraction of the space. Each ratio corresponds to the item of at the same index.|
-|`items`|Sequence (list) of `object` references|The list of widgets to put in the grid. The number of items must be equal to the number of ratios.|
+|`items`|Sequence (list) of item mappings|The list of items to place in the grid. Each item must specify an `object` reference and a `span`.|
 |`gap`|`boolean`|*Optional* - If there should be no gap between the items (overrides stylesheet).|
+
+Each item within `items` accepts:
+|Item property|Type|Meaning|
+|-|-|-|
+|`object`|`string` reference|Reference to a widget.|
+|`span`|`number` or `"auto"`|The size allocation for this item. Use `"auto"` for minimum required space, or a positive number for a proportional fraction of the space.|
 
 #### Example `grid` YAML
 ```yaml
 example_grid:
   type: grid
   layout: horizontal
-  ratios: [2, 1, 2]
   items:
    - object: reference_to_first_widget
+     span: 2
    - object: reference_to_second_widget
+     span: 1
    - object: reference_to_third_widget
+     span: 2
 ```
 
 ## Additional widget modules

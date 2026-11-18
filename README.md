@@ -55,7 +55,7 @@ The `config` property will be used to load the main widget configuration file as
 The `defaults` map allows you to define default [Widget Configurations](#widget-configurations) for specific widget types; reducing the need to repeat common values. The top levels keys within the `defaults` map represent the `type` of the widget. If a specific widget defines a property already listed in `defaults`, its local value will **override** the default.
 
 ### Widget configuration files
-Widget configuration files consist of descriptive structures used to define widgets, as well as *optional* links to additional `dependencies` defined in that file - as a sequence (list) of `string`s consisting of locations for additional configuration files - which will all be parsed resulting in additional widgets available to reference. This means that the `dependencies` keyword is reserved and widgets **cannot** be named it.
+Widget configuration files consist of descriptive structures used to define widgets, as well as *optional* links to additional files that you wish to `include` that are defined in that file - as a `string` or a sequence (list) of `string`s consisting of locations for additional configuration files - which will all be parsed resulting in additional widgets available to reference. This means that the `include` keyword is reserved and widgets **cannot** be named it.
 
 The first widget that will be used in the GUI, as the parent of all other widgets, must be named `main`; otherwise the GUI will fail to generate.
 

@@ -229,40 +229,40 @@ void Structure::populate_widget_defaults(WidgetContents const &widget_defaults)
 
 void Structure::parse_file(std::filesystem::path const &configuration_file)
 {
-    std::vector<std::filesystem::path> dependency_files({configuration_file});
+    std::vector<std::filesystem::path> files_to_parse({configuration_file});
     do
     {
-        std::filesystem::path const dependency_file = dependency_files.back();
-        dependency_files.pop_back();
+        std::filesystem::path const current_file = files_to_parse.back();
+        files_to_parse.pop_back();
         {
-            auto const it = std::find(m_parsed_files.begin(), m_parsed_files.end(), dependency_file);
+            auto const it = std::find(m_parsed_files.begin(), m_parsed_files.end(), current_file);
             if (it != m_parsed_files.end())
             {
-                debug(m_debug_stream, m_name, "Additional reference was made to \"" + dependency_file.string() + "\"");
+                debug(m_debug_stream, m_name, "Additional reference was made to \"" + current_file.string() + "\"");
                 continue;
             }
         }
-        if (!std::filesystem::exists(dependency_file))
-            throw std::runtime_error("Unable to find dependency file of \"" + dependency_file.string() + "\"");
-        debug(m_debug_stream, m_name, "Parsing configuration dependency \"" + dependency_file.string() + "\"...");
+        if (!std::filesystem::exists(current_file))
+            throw std::runtime_error("Unable to find the configuration file of \"" + current_file.string() + "\"");
+        debug(m_debug_stream, m_name, "Parsing configuration file \"" + current_file.string() + "\"...");
         try
         {
             std::vector<YAML::Node> documents = {};
-            for (auto &document : YAML::LoadAllFromFile(dependency_file.string()))
+            for (auto &document : YAML::LoadAllFromFile(current_file.string()))
             {
                 if (!document.IsDefined() || !document.IsNull())
                     documents.push_back(document);
             }
-            m_parsed_files.push_back(dependency_file);
+            m_parsed_files.push_back(current_file);
             if (documents.empty())
             {
-                debug(m_debug_stream, m_name, "Empty dependency file located at \"" + dependency_file.string() + "\"");
+                debug(m_debug_stream, m_name, "The file \"" + current_file.string() + "\" is empty");
                 continue;
             }
             for (auto &&contents : documents)
             {
                 if (!contents.IsMap())
-                    throw std::runtime_error("Unable to parse non-mappable structure on line " + std::to_string(yaml_node_line_number(contents)) + " of \"" + dependency_file.string() + "\"");
+                    throw std::runtime_error("Unable to parse non-mappable structure on line " + std::to_string(yaml_node_line_number(contents)) + " of \"" + current_file.string() + "\"");
 
                 for (auto const &widget_entry : contents)
                 {
@@ -274,19 +274,19 @@ void Structure::parse_file(std::filesystem::path const &configuration_file)
                     }
                     catch (std::runtime_error const &e)
                     {
-                        throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + dependency_file.string() + "\"");
+                        throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + current_file.string() + "\"");
                     }
                     catch (std::exception const &e)
                     {
-                        throw std::runtime_error("Failed to parse the name (string) of a widget on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + dependency_file.string() + "\"");
+                        throw std::runtime_error("Failed to parse the name (string) of a widget on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + current_file.string() + "\"");
                     }
 
-                    if (widget_name == "dependencies")
+                    if (widget_name == "include")
                         continue;
 
                     YAML::Node const type = widget_entry.second["type"];
                     if (!type.IsDefined())
-                        throw std::runtime_error("The widget `" + widget_name + "` has no `type` definition - widget declared on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + dependency_file.string() + "\"");
+                        throw std::runtime_error("The widget `" + widget_name + "` has no `type` definition - widget declared on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + current_file.string() + "\"");
 
                     WidgetType widget_type;
                     try
@@ -296,11 +296,11 @@ void Structure::parse_file(std::filesystem::path const &configuration_file)
                     }
                     catch (YAML::Exception const &e)
                     {
-                        throw std::runtime_error("Failed to parse the `type` (string) of widget `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(type)) + " of \"" + dependency_file.string() + "\"");
+                        throw std::runtime_error("Failed to parse the `type` (string) of widget `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(type)) + " of \"" + current_file.string() + "\"");
                     }
                     catch (std::runtime_error const &e)
                     {
-                        throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(type)) + " of \"" + dependency_file.string() + "\"");
+                        throw std::runtime_error(std::string(e.what()) + " on line " + std::to_string(yaml_node_line_number(type)) + " of \"" + current_file.string() + "\"");
                     }
 
                     // Create a mutable copy of the node to remove the "type" key
@@ -312,45 +312,54 @@ void Structure::parse_file(std::filesystem::path const &configuration_file)
                     }
                     catch (std::runtime_error const &e)
                     {
-                        throw std::runtime_error(std::string(e.what()) + " of \"" + dependency_file.string() + "\"");
+                        throw std::runtime_error(std::string(e.what()) + " of \"" + current_file.string() + "\"");
                     }
                 }
 
-                YAML::Node const dependencies = contents["dependencies"];
-                if (dependencies.IsDefined())
+                YAML::Node const include_node = contents["include"];
+                if (include_node.IsDefined())
                 {
-                    if (dependencies.IsSequence())
+                    auto const process_include_entry = [&](YAML::Node const &include_entry)
                     {
-                        for (YAML::Node const &dependency : dependencies)
+                        if (!include_entry.IsScalar())
+                            throw std::runtime_error("Expected a string path for an include on line " + std::to_string(yaml_node_line_number(include_entry)) + " of \"" + current_file.string() + "\"");
+
+                        std::filesystem::path include_relative_path;
+                        try
                         {
-                            if (!dependency.IsScalar())
-                                throw std::runtime_error("Expected a string path for a dependency on line " + std::to_string(yaml_node_line_number(dependency)) + " of \"" + dependency_file.string() + "\"");
-                            std::filesystem::path dependency_relative_path;
-                            try
-                            {
-                                dependency_relative_path = dependency.as<std::string>();
-                            }
-                            catch (std::exception const &e)
-                            {
-                                throw std::runtime_error("Expected a string path for a dependency on line " + std::to_string(yaml_node_line_number(dependency)) + " of \"" + dependency_file.string() + "\"");
-                            }
-
-                            // The 'dependency_file' is the absolute path of the current YAML file being parsed.
-                            // We want to resolve 'dependency_relative_path' relative to the directory of 'dependency_file'.
-                            std::filesystem::path parent_dir = std::filesystem::absolute(dependency_file).parent_path();
-
-                            // Construct the absolute path of the dependency
-                            std::filesystem::path resolved_dependency_path;
-                            if (dependency_relative_path.is_absolute())
-                                resolved_dependency_path = dependency_relative_path;
-                            else
-                                resolved_dependency_path = parent_dir / dependency_relative_path;
-
-                            dependency_files.push_back(std::filesystem::absolute(resolved_dependency_path.lexically_normal()).string());
+                            include_relative_path = include_entry.as<std::string>();
                         }
+                        catch (std::exception const &e)
+                        {
+                            throw std::runtime_error("Expected a string path for an include on line " + std::to_string(yaml_node_line_number(include_entry)) + " of \"" + current_file.string() + "\"");
+                        }
+
+                        if (include_relative_path.empty())
+                            throw std::runtime_error("Expected a string path for an include on line " + std::to_string(yaml_node_line_number(include_entry)) + " of \"" + current_file.string() + "\"");
+
+                        // The 'current_file' is the absolute path of the current YAML file being parsed.
+                        // We want to resolve 'include_relative_path' relative to the directory of 'current_file'.
+                        std::filesystem::path const parent_directory = std::filesystem::absolute(current_file).parent_path();
+
+                        // Construct the absolute path of the included file
+                        std::filesystem::path resolved_include_path;
+                        if (include_relative_path.is_absolute())
+                            resolved_include_path = include_relative_path;
+                        else
+                            resolved_include_path = parent_directory / include_relative_path;
+
+                        files_to_parse.push_back(std::filesystem::absolute(resolved_include_path.lexically_normal()).string());
+                    };
+
+                    if (include_node.IsSequence())
+                    {
+                        for (YAML::Node const &include_entry : include_node)
+                            process_include_entry(include_entry);
                     }
-                    else if (dependencies.Type() != YAML::NodeType::Null)
-                        throw std::runtime_error("Unable to parse `dependencies` since a list is expected on line " + std::to_string(yaml_node_line_number(dependencies)) + " of \"" + dependency_file.string() + "\"");
+                    else if (include_node.IsScalar())
+                        process_include_entry(include_node);
+                    else if (include_node.Type() != YAML::NodeType::Null)
+                        throw std::runtime_error("Unable to parse `include` since a string or list is expected on line " + std::to_string(yaml_node_line_number(include_node)) + " of \"" + current_file.string() + "\"");
                 }
             }
         }
@@ -406,7 +415,7 @@ void Structure::parse_file(std::filesystem::path const &configuration_file)
                     yaml_error.at(0) = std::toupper(static_cast<unsigned char>(yaml_error.at(0)));
                 }
             }
-            throw std::runtime_error(yaml_error + " on line " + std::to_string(e.mark.line + 1) + " of \"" + dependency_file.string() + "\"");
+            throw std::runtime_error(yaml_error + " on line " + std::to_string(e.mark.line + 1) + " of \"" + current_file.string() + "\"");
         }
         catch (std::runtime_error const &e)
         {
@@ -414,9 +423,9 @@ void Structure::parse_file(std::filesystem::path const &configuration_file)
         }
         catch (std::exception const &e)
         {
-            throw std::runtime_error("Unable to parse dependency file of \"" + dependency_file.string() + "\"");
+            throw std::runtime_error("Unable to include an unparseable file of \"" + current_file.string() + "\"");
         }
-    } while (!dependency_files.empty());
+    } while (!files_to_parse.empty());
 }
 
 void Structure::add_widget(WidgetName const &name, WidgetType const &type, YAML::Node const &widget_base_node, WidgetContents const &contents, WidgetFileReference const file_reference)

@@ -822,7 +822,7 @@ main:
 }
 
 /**
- * @brief Test Multi File Dependency Loading
+ * @brief Test Multi File Include Loading
  */
 TEST_F(StructureTest, MultiFileDependencyLoading)
 {
@@ -833,7 +833,7 @@ my_button:
 )");
 
     auto const configuration_file = temporary_directory.create_file("gui.yaml", R"(
-dependencies:
+include:
   - widgets/buttons.yaml
 main:
   type: container
@@ -852,12 +852,12 @@ main:
 }
 
 /**
- * @brief Test Circular File Dependencies Handled Gracefully
+ * @brief Test Circular File Includes Handled Gracefully
  */
 TEST_F(StructureTest, CircularFileDependenciesHandledGracefully)
 {
     temporary_directory.create_file("file_a.yaml", R"(
-dependencies:
+include:
   - file_b.yaml
 main:
   type: root
@@ -866,7 +866,7 @@ main:
 )");
 
     temporary_directory.create_file("file_b.yaml", R"(
-dependencies:
+include:
   - file_a.yaml
 widget_b:
   type: child
@@ -879,12 +879,12 @@ widget_b:
 }
 
 /**
- * @brief Test Missing Dependency File Throws
+ * @brief Test Missing Include File Throws
  */
 TEST_F(StructureTest, MissingDependencyFileThrows)
 {
     auto const configuration_file = temporary_directory.create_file("gui.yaml", R"(
-dependencies:
+include:
   - missing_file.yaml
 main:
   type: root
@@ -899,7 +899,7 @@ main:
             }
             catch (std::runtime_error const &error)
             {
-                EXPECT_NE(std::string(error.what()).find("Unable to find dependency file of"), std::string::npos);
+                EXPECT_NE(std::string(error.what()).find("Unable to find the configuration file of"), std::string::npos);
                 throw;
             }
         },
@@ -907,12 +907,41 @@ main:
 }
 
 /**
- * @brief Test Non List Dependencies Throws
+ * @brief Test Single String Include Loading
  */
-TEST_F(StructureTest, NonListDependenciesThrows)
+TEST_F(StructureTest, SingleStringIncludeLoading)
+{
+    temporary_directory.create_file("widgets/buttons.yaml", R"(
+my_button:
+  type: btn
+  label: "Click Me"
+)");
+
+    auto const configuration_file = temporary_directory.create_file("gui.yaml", R"(
+include: widgets/buttons.yaml
+main:
+  type: container
+  btn:
+    object: my_button
+)");
+
+    Structure structure("test_struct");
+    structure.parse_file(configuration_file);
+    std::string const structure_json = structure.build(register_dependency_callback, false);
+
+    auto const parsed = nlohmann::json::parse(structure_json);
+    EXPECT_TRUE(parsed["widgets"].contains("main"));
+    EXPECT_TRUE(parsed["widgets"].contains("my_button"));
+    EXPECT_EQ(parsed["widgets"]["my_button"][1]["label"].get<std::string>(), "Click Me");
+}
+
+/**
+ * @brief Test Empty String Include Throws
+ */
+TEST_F(StructureTest, EmptyStringIncludeThrows)
 {
     auto const configuration_file = temporary_directory.create_file("gui.yaml", R"(
-dependencies: "should_be_a_list_not_a_string.yaml"
+include: ""
 main:
   type: root
 )");
@@ -926,7 +955,35 @@ main:
             }
             catch (std::runtime_error const &error)
             {
-                EXPECT_NE(std::string(error.what()).find("Unable to parse `dependencies` since a list is expected"), std::string::npos);
+                EXPECT_NE(std::string(error.what()).find("Expected a string path for an include"), std::string::npos);
+                throw;
+            }
+        },
+        std::runtime_error);
+}
+
+/**
+ * @brief Test Non String Or List Include Throws
+ */
+TEST_F(StructureTest, NonStringOrListIncludeThrows)
+{
+    auto const configuration_file = temporary_directory.create_file("gui.yaml", R"(
+include:
+  invalid_key: "should_not_be_a_map"
+main:
+  type: root
+)");
+
+    Structure structure("test_struct");
+    EXPECT_THROW(
+        {
+            try
+            {
+                structure.parse_file(configuration_file);
+            }
+            catch (std::runtime_error const &error)
+            {
+                EXPECT_NE(std::string(error.what()).find("Unable to parse `include` since a string or list is expected"), std::string::npos);
                 throw;
             }
         },
@@ -1002,5 +1059,5 @@ main:
     structure.build(register_dependency_callback);
 
     std::string output = debug_ss.str();
-    EXPECT_NE(output.find("CustomDebugName: Parsing configuration dependency"), std::string::npos);
+    EXPECT_NE(output.find("CustomDebugName: Parsing configuration file"), std::string::npos);
 }

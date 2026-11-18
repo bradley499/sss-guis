@@ -4,7 +4,7 @@
 
 namespace sss::guis
 {
-    class guis_t
+    class Guis
     {
     private:
         /**
@@ -22,11 +22,11 @@ namespace sss::guis
          * @param configuration_file The source configuration file to find structures in
          * @param output_directory The output directory for all generated file
          */
-        guis_t(std::filesystem::path const &configuration_file, std::filesystem::path const &output_directory);
+        Guis(std::filesystem::path const &configuration_file, std::filesystem::path const &output_directory);
         /**
          * @brief Deconstructor
          */
-        ~guis_t();
+        ~Guis();
         /**
          * @brief Generate GUIs
          * @param disallow_conflicts Do not allow dependencies or generated file to have conflicting output file name
@@ -35,5 +35,5 @@ namespace sss::guis
          */
         void generate(bool const disallow_conflicts = true, bool const flatten_dependency_references = false, std::ostream const *debug_stream = nullptr);
     };
-    extern guis_t guis;
+    extern Guis guis;
 }

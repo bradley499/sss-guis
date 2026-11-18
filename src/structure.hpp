@@ -13,51 +13,51 @@ namespace sss::guis
     /**
      * @brief Callback function to register a path as a dependency
      */
-    using path_register_dependency_t = std::function<std::string(std::filesystem::path const &)>;
+    using PathRegisterDependency = std::function<std::string(std::filesystem::path const &)>;
 
-    class structure_t
+    class Structure
     {
     private:
         /**
          * @brief The name of a widget
          */
-        using widget_name_t = std::string;
+        using WidgetName = std::string;
         /**
          * @brief Numeric reference for a type
          */
-        using widget_type_identifier_t = int;
+        using WidgetTypeIdentifier = int;
         /**
          * @brief The type of a widget
          */
-        using widget_type_t = std::string;
+        using WidgetType = std::string;
         /**
          * @brief The contents of a widget
          */
-        using widget_contents_t = YAML::Node;
+        using WidgetContents = YAML::Node;
         /**
          * @brief The reference to a file that declares a widget
          */
-        using widget_file_reference_t = int;
+        using WidgetFileReference = int;
         /**
          * @brief Widget names and type identifiers
          */
-        std::map<widget_name_t, widget_type_identifier_t> m_widgets;
+        std::map<WidgetName, WidgetTypeIdentifier> m_widgets;
         /**
          * @brief Collection of widget type
          */
-        std::vector<widget_type_t> m_widget_types;
+        std::vector<WidgetType> m_widget_types;
         /**
          * @brief Collection of widget names and their contents
          */
-        std::map<widget_name_t, widget_contents_t> m_widget_contents;
+        std::map<WidgetName, WidgetContents> m_widget_contents;
         /**
          * @brief Collection of widget types and their default contents
          */
-        std::map<widget_type_t, widget_contents_t> m_widget_contents_defaults;
+        std::map<WidgetType, WidgetContents> m_widget_contents_defaults;
         /**
          * @brief Collection of widget names and their declaration file
          */
-        std::map<widget_name_t, widget_file_reference_t> m_widget_files;
+        std::map<WidgetName, WidgetFileReference> m_widget_files;
         /**
          * @brief Collection of already parsed files
          */
@@ -77,7 +77,7 @@ namespace sss::guis
          * @param contents The remaining contents of the widget
          * @param file_reference The reference to the file of the widget's definition
          */
-        void add_widget(widget_name_t const &name, widget_type_t const &type, YAML::Node const &widget_base_node, widget_contents_t const &contents, widget_file_reference_t const file_reference);
+        void add_widget(WidgetName const &name, WidgetType const &type, YAML::Node const &widget_base_node, WidgetContents const &contents, WidgetFileReference const file_reference);
         /**
          * @brief Convert object references to numerical references
          */
@@ -86,7 +86,7 @@ namespace sss::guis
          * @brief Remove all unreferenced objects and validate object hierarchical structure and dependencies
          * @param path_register_dependency_callback Callback function to register a path as a dependency
          */
-        void validate_and_prune_hierarchy(path_register_dependency_t const &path_register_dependency_callback);
+        void validate_and_prune_hierarchy(PathRegisterDependency const &path_register_dependency_callback);
 
     public:
         /**
@@ -94,16 +94,16 @@ namespace sss::guis
          * @param name The name of the structure (only used for debug output)
          * @param debug_stream A `std::ofstream` to write debug outputs to
          */
-        structure_t(std::string const &name, std::ostream const *debug_stream = nullptr);
+        Structure(std::string const &name, std::ostream const *debug_stream = nullptr);
         /**
          * @brief Deconstructor
          */
-        ~structure_t();
+        ~Structure();
         /**
          * @brief Populate widgets with default properties
          * @param widget_defaults A collection of default values for widgets of defined types
          */
-        void populate_widget_defaults(widget_contents_t const &widget_defaults);
+        void populate_widget_defaults(WidgetContents const &widget_defaults);
         /**
          * @brief Parse a YAML file, handling dependencies and widgets
          * @param configuration_file The source configuration file to start structuring from
@@ -114,6 +114,6 @@ namespace sss::guis
          * @param path_register_dependency_callback Callback function to register a path as a dependency
          * @param numeric_references Whether to convert object references to a numeric value
          */
-        std::string build(path_register_dependency_t const &path_register_dependency_callback, bool const numeric_references = true);
+        std::string build(PathRegisterDependency const &path_register_dependency_callback, bool const numeric_references = true);
     };
 }

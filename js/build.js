@@ -10,7 +10,7 @@ import * as sass from 'sass';
  * @returns {string}
  */
 function compileScss(scssPath) {
-const compiler = (sass && sass.default) ? sass.default : sass;
+    const compiler = (sass && sass.default) ? sass.default : sass;
     try {
         if (typeof compiler.compile === 'function') {
             return compiler.compile(scssPath, { style: 'compressed' }).css;
@@ -31,9 +31,8 @@ const scssPlugin = {
     name: "scss-text-plugin",
     setup(build) {
         build.onLoad({ filter: /\.scss$/ }, async (args) => {
-            const css = compileScss(args.path);
             return {
-                contents: css,
+                contents: compileScss(args.path),
                 loader: "text",
             };
         });
@@ -41,90 +40,41 @@ const scssPlugin = {
 };
 
 /**
- * Extract exported symbols from TypeScript source file using TypeScript AST
- * @param {string} filePath
- * @param {string} sourceCode
- * @returns {{ values: string[], types: string[] }}
+ * Extract public non-internal exported value names from an entry file
+ * @param {string} entryFile
+ * @param {ts.CompilerOptions} compilerOptions
+ * @returns {{ program: ts.Program, values: string[] }}
  */
-function extractExportedSymbols(filePath, sourceCode) {
-    const sourceFile = ts.createSourceFile(
-        filePath,
-        sourceCode,
-        ts.ScriptTarget.Latest,
-        true,
-        ts.ScriptKind.TS
-    );
-
-    const values = new Set();
-    const types = new Set();
-
-    function isExported(node) {
-        const modifiers = ts.canHaveModifiers?.(node) ? ts.getModifiers(node) : node.modifiers;
-        if (!modifiers) return false;
-        return modifiers.some(m => m.kind === ts.SyntaxKind.ExportKeyword);
+function getPublicExportedValues(entryFile, compilerOptions) {
+    const program = ts.createProgram([entryFile], compilerOptions);
+    const checker = program.getTypeChecker();
+    const sourceFile = program.getSourceFile(entryFile);
+    if (!sourceFile) {
+        throw new Error(`Source file not found: ${entryFile}`);
     }
+    const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
+    const exports = checker.getExportsOfModule(moduleSymbol);
 
-    function visit(node) {
-        if (ts.isClassDeclaration(node) && isExported(node) && node.name) {
-            values.add(node.name.text);
-        } else if (ts.isFunctionDeclaration(node) && isExported(node) && node.name) {
-            values.add(node.name.text);
-        } else if (ts.isEnumDeclaration(node) && isExported(node) && node.name) {
-            values.add(node.name.text);
-        } else if (ts.isVariableStatement(node) && isExported(node)) {
-            for (const decl of node.declarationList.declarations) {
-                if (ts.isIdentifier(decl.name)) {
-                    values.add(decl.name.text);
-                }
-            }
-        } else if (ts.isInterfaceDeclaration(node) && isExported(node) && node.name) {
-            types.add(node.name.text);
-        } else if (ts.isTypeAliasDeclaration(node) && isExported(node) && node.name) {
-            types.add(node.name.text);
-        } else if (ts.isExportDeclaration(node)) {
-            if (node.exportClause && ts.isNamedExports(node.exportClause)) {
-                for (const elem of node.exportClause.elements) {
-                    const name = elem.name.text;
-                    if (elem.isTypeOnly || node.isTypeOnly) {
-                        types.add(name);
-                    } else {
-                        values.add(name);
-                    }
-                }
-            }
+    const values = [];
+    for (const exp of exports) {
+        const decl = exp.valueDeclaration || (exp.declarations && exp.declarations[0]);
+        const tags = decl ? ts.getJSDocTags(decl) : [];
+        const isInternal = tags.some(t => t.tagName && t.tagName.text === "internal");
+        const isValue = Boolean(exp.flags & ts.SymbolFlags.Value);
+
+        if (isValue && !isInternal) {
+            values.push(exp.name);
         }
-
-        ts.forEachChild(node, visit);
     }
-
-    visit(sourceFile);
-
-    return {
-        values: Array.from(values),
-        types: Array.from(types),
-    };
+    return { program, values };
 }
 
 /**
- * Generate TypeScript declaration files for developer SDK files
- * @param {string[]} tsFiles
- * @param {string} outDir
+ * Emit TypeScript declarations using existing program
+ * @param {ts.Program} program
  */
-function generateDeclarations(tsFiles, outDir) {
-    const compilerOptions = {
-        declaration: true,
-        emitDeclarationOnly: true,
-        outDir,
-        target: ts.ScriptTarget.ES2019,
-        module: ts.ModuleKind.ESNext,
-        moduleResolution: ts.ModuleResolutionKind.NodeJs,
-        stripInternal: true,
-        skipLibCheck: true,
-    };
-
-    const program = ts.createProgram(tsFiles, compilerOptions);
+function emitDeclarations(program) {
     const emitResult = program.emit();
-
     const allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
     const errors = allDiagnostics.filter(d => d.category === ts.DiagnosticCategory.Error);
 
@@ -142,20 +92,42 @@ function generateDeclarations(tsFiles, outDir) {
 }
 
 async function main() {
-    const startTime = Date.now();
     const rootDir = process.cwd();
     const distDir = path.resolve(rootDir, "dist");
-    const tsDir = path.resolve(rootDir, "ts");
+    const entryFile = path.resolve(rootDir, "ts/index.ts");
 
     if (fs.existsSync(distDir)) {
         fs.rmSync(distDir, { recursive: true, force: true });
     }
     fs.mkdirSync(distDir, { recursive: true });
 
-    const publicTsFiles = ["ts/resource.ts", "ts/structure.ts", "ts/widget.ts"];
+    const tsOptions = {
+        declaration: true,
+        emitDeclarationOnly: true,
+        outDir: distDir,
+        target: ts.ScriptTarget.ES2019,
+        module: ts.ModuleKind.ESNext,
+        moduleResolution: ts.ModuleResolutionKind.NodeJs,
+        stripInternal: true,
+        skipLibCheck: true,
+    };
+
+    // Analyze public exports and generate type declarations
+    const { program, values } = getPublicExportedValues(entryFile, tsOptions);
+    emitDeclarations(program);
+
+    // Generate ESM runtime accessor stub (index.mjs)
+    let stubContent = "// Generated window accessor stub for @sss/sss-guis\n";
+    stubContent += "const _guis = (typeof window !== 'undefined' && window.guis) ? window.guis : undefined;\n\n";
+    for (const val of values) {
+        stubContent += `export const ${val} = _guis?.${val};\n`;
+    }
+    fs.writeFileSync(path.join(distDir, "index.mjs"), stubContent, "utf8");
+
+    // Bundle standalone runtime IIFE for browser embedding (guis.js)
     const virtualEntryContents = [
-        ...publicTsFiles.map(f => `export * from \"./${f.replace(/\\/g, '/')}\";`),
-        "export * from \"./ts/internal/index.ts\";",
+        `export { ${values.join(", ")} } from "./ts/index.ts";`,
+        'import "./ts/internal/index.ts";',
     ].join("\n");
 
     await esbuild.build({
@@ -175,37 +147,6 @@ async function main() {
         plugins: [scssPlugin],
         outfile: path.join(distDir, "guis.js"),
     });
-
-    for (const relFile of publicTsFiles) {
-        const fullPath = path.resolve(rootDir, relFile);
-        const sourceCode = fs.readFileSync(fullPath, "utf8");
-        const { values } = extractExportedSymbols(relFile, sourceCode);
-
-        const baseName = path.basename(relFile, ".ts");
-        const stubOutPath = path.join(distDir, `${baseName}.mjs`);
-
-        let stubContent = `// Generated window accessor stub for ${baseName}\n`;
-        stubContent += "const _guis = (typeof window !== 'undefined' && window.guis) ? window.guis : undefined;\n\n";
-
-        for (const val of values) {
-            stubContent += `export const ${val} = _guis?.${val};\n`;
-        }
-
-        if (values.length === 0) {
-            stubContent += "export {};\n";
-        }
-
-        fs.writeFileSync(stubOutPath, stubContent, "utf8");
-    }
-
-    generateDeclarations(publicTsFiles, distDir);
-
-    const distFiles = fs.readdirSync(distDir).sort();
-    for (const file of distFiles) {
-        const stat = fs.statSync(path.join(distDir, file));
-    }
-
-    const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
 }
 
 main().catch((error) => {

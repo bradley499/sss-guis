@@ -5,7 +5,7 @@
 
 namespace sss::guis
 {
-    class dependencies_t
+    class Dependencies
     {
     private:
         /**
@@ -18,11 +18,11 @@ namespace sss::guis
          * @brief Construct a dependency tree
          * @param path The path to evaluate (support * and ? wildcards)
          */
-        dependencies_t(std::filesystem::path const &path);
+        Dependencies(std::filesystem::path const &path);
         /**
          * @brief Deconstructor
          */
-        ~dependencies_t();
+        ~Dependencies();
         /**
          * @brief Show all evaluated paths
          * @returns A vector of all matching (existing) paths

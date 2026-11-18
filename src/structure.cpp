@@ -172,7 +172,7 @@ YAML_TO_JSON_STRING:
     }
 }
 
-structure_t::structure_t(std::string const &name, std::ostream const *debug_stream)
+Structure::Structure(std::string const &name, std::ostream const *debug_stream)
     : m_widgets({}),
       m_widget_types({}),
       m_widget_contents({}),
@@ -184,7 +184,7 @@ structure_t::structure_t(std::string const &name, std::ostream const *debug_stre
 {
 }
 
-structure_t::~structure_t()
+Structure::~Structure()
 {
     m_widgets.clear();
     m_widget_types.clear();
@@ -193,18 +193,18 @@ structure_t::~structure_t()
     m_parsed_files.clear();
 }
 
-void structure_t::populate_widget_defaults(widget_contents_t const &widget_defaults)
+void Structure::populate_widget_defaults(WidgetContents const &widget_defaults)
 {
     if (!widget_defaults.IsDefined())
         return;
     if (!widget_defaults.IsMap())
-        throw std::runtime_error("Unable to parse widget defaults since a mappable structure is expected on line " + std::to_string(yaml_node_line_number(widget_defaults))); // Should never be thrown (expected to be caught prior to construction of `structure_t` class)
+        throw std::runtime_error("Unable to parse widget defaults since a mappable structure is expected on line " + std::to_string(yaml_node_line_number(widget_defaults))); // Should never be thrown (expected to be caught prior to construction of `Structure` class)
     for (auto const &widget_default : widget_defaults)
     {
-        widget_type_t widget_type;
+        WidgetType widget_type;
         try
         {
-            widget_type = to_lower(widget_default.first.as<widget_type_t>());
+            widget_type = to_lower(widget_default.first.as<WidgetType>());
             validate_widget_type(widget_type);
         }
         catch (YAML::Exception const &e)
@@ -218,7 +218,7 @@ void structure_t::populate_widget_defaults(widget_contents_t const &widget_defau
         YAML::Node const type = widget_default.second["type"];
         if (type.IsDefined())
         {
-            if (!type.IsScalar() || (type.IsScalar() && type.as<widget_type_t>() != widget_type))
+            if (!type.IsScalar() || (type.IsScalar() && type.as<WidgetType>() != widget_type))
                 throw std::runtime_error("The widget default for the type `" + widget_type + "` has a conflicting yet redundant `type` definition - declared on line " + std::to_string(yaml_node_line_number(type)));
             else
                 throw std::runtime_error("The widget default for the type `" + widget_type + "` has a redundant `type` definition - declared on line " + std::to_string(yaml_node_line_number(type)));
@@ -227,7 +227,7 @@ void structure_t::populate_widget_defaults(widget_contents_t const &widget_defau
     }
 }
 
-void structure_t::parse_file(std::filesystem::path const &configuration_file)
+void Structure::parse_file(std::filesystem::path const &configuration_file)
 {
     std::vector<std::filesystem::path> dependency_files({configuration_file});
     do
@@ -266,10 +266,10 @@ void structure_t::parse_file(std::filesystem::path const &configuration_file)
 
                 for (auto const &widget_entry : contents)
                 {
-                    widget_name_t widget_name;
+                    WidgetName widget_name;
                     try
                     {
-                        widget_name = to_lower(widget_entry.first.as<widget_name_t>());
+                        widget_name = to_lower(widget_entry.first.as<WidgetName>());
                         validate_widget_name(widget_name);
                     }
                     catch (std::runtime_error const &e)
@@ -288,10 +288,10 @@ void structure_t::parse_file(std::filesystem::path const &configuration_file)
                     if (!type.IsDefined())
                         throw std::runtime_error("The widget `" + widget_name + "` has no `type` definition - widget declared on line " + std::to_string(yaml_node_line_number(widget_entry.first)) + " of \"" + dependency_file.string() + "\"");
 
-                    widget_type_t widget_type;
+                    WidgetType widget_type;
                     try
                     {
-                        widget_type = to_lower(type.as<widget_type_t>());
+                        widget_type = to_lower(type.as<WidgetType>());
                         validate_widget_type(widget_type);
                     }
                     catch (YAML::Exception const &e)
@@ -304,11 +304,11 @@ void structure_t::parse_file(std::filesystem::path const &configuration_file)
                     }
 
                     // Create a mutable copy of the node to remove the "type" key
-                    widget_contents_t widget_content_node = widget_entry.second;
+                    WidgetContents widget_content_node = widget_entry.second;
                     widget_content_node.remove("type");
                     try
                     {
-                        add_widget(widget_name, widget_type, widget_entry.first, widget_content_node, static_cast<widget_file_reference_t>(m_parsed_files.size() - 1));
+                        add_widget(widget_name, widget_type, widget_entry.first, widget_content_node, static_cast<WidgetFileReference>(m_parsed_files.size() - 1));
                     }
                     catch (std::runtime_error const &e)
                     {
@@ -419,9 +419,9 @@ void structure_t::parse_file(std::filesystem::path const &configuration_file)
     } while (!dependency_files.empty());
 }
 
-void structure_t::add_widget(widget_name_t const &name, widget_type_t const &type, YAML::Node const &widget_base_node, widget_contents_t const &contents, widget_file_reference_t const file_reference)
+void Structure::add_widget(WidgetName const &name, WidgetType const &type, YAML::Node const &widget_base_node, WidgetContents const &contents, WidgetFileReference const file_reference)
 {
-    widget_type_identifier_t type_id = -1;
+    WidgetTypeIdentifier type_id = -1;
     auto const it = std::find(m_widget_types.begin(), m_widget_types.end(), type);
     if (it != m_widget_types.end())
         type_id = std::distance(m_widget_types.begin(), it);
@@ -436,18 +436,18 @@ void structure_t::add_widget(widget_name_t const &name, widget_type_t const &typ
     if (m_widget_contents_defaults.count(type))
     {
         YAML::Node generated_output = YAML::Clone(m_widget_contents_defaults.at(type));
-        struct nodeComparison_t
+        struct NodeComparison
         {
             YAML::Node generated_node;
             YAML::Node defined_node;
         };
 
-        std::vector<nodeComparison_t> processing_stack = {};
+        std::vector<NodeComparison> processing_stack = {};
         processing_stack.push_back({generated_output, contents});
 
         while (!processing_stack.empty())
         {
-            nodeComparison_t task = processing_stack.back();
+            NodeComparison task = processing_stack.back();
             processing_stack.pop_back();
 
             YAML::Node &generated_node = task.generated_node;
@@ -482,17 +482,17 @@ void structure_t::add_widget(widget_name_t const &name, widget_type_t const &typ
     m_widget_files[name] = file_reference;
 }
 
-void structure_t::validate_and_prune_hierarchy(path_register_dependency_t const &path_register_dependency_callback)
+void Structure::validate_and_prune_hierarchy(PathRegisterDependency const &path_register_dependency_callback)
 {
-    std::unordered_set<widget_name_t> referenced_widgets = {};
+    std::unordered_set<WidgetName> referenced_widgets = {};
 
     // We store the current widget and the path of ancestors taken to reach it
-    struct widget_t
+    struct Widget
     {
-        widget_name_t name;
-        std::vector<widget_name_t> hierarchy;
+        WidgetName name;
+        std::vector<WidgetName> hierarchy;
     };
-    std::vector<widget_t> widget_hierarchies_to_traverse = {};
+    std::vector<Widget> widget_hierarchies_to_traverse = {};
 
     if (m_widgets.count("main"))
     {
@@ -506,7 +506,7 @@ void structure_t::validate_and_prune_hierarchy(path_register_dependency_t const 
      * @param widget_yaml_contents The YAML content of the widget
      * @param widget_file The source file of the widget
      */
-    auto const validate_references_iterative = [&](widget_t const &widget, YAML::Node const &widget_yaml_contents, std::filesystem::path const &widget_file)
+    auto const validate_references_iterative = [&](Widget const &widget, YAML::Node const &widget_yaml_contents, std::filesystem::path const &widget_file)
     {
         std::vector<YAML::Node> widget_contents = {};
         widget_contents.push_back(widget_yaml_contents);
@@ -539,12 +539,12 @@ void structure_t::validate_and_prune_hierarchy(path_register_dependency_t const 
                     {
                         if (value.IsNull())
                             throw std::runtime_error("No child object reference has been defined for `object` of `" + widget.name + "` on line " + std::to_string(yaml_node_line_number(it->first)) + " of \"" + widget_file.string() + "\"");
-                        widget_name_t object_name;
+                        WidgetName object_name;
                         try
                         {
                             if (value.IsScalar())
                             {
-                                object_name = to_lower(value.as<widget_name_t>());
+                                object_name = to_lower(value.as<WidgetName>());
                                 if (object_name.empty())
                                     throw YAML::BadConversion(value.Mark());
                             }
@@ -557,11 +557,11 @@ void structure_t::validate_and_prune_hierarchy(path_register_dependency_t const 
                         }
                         if (m_widgets.count(object_name) == 0)
                             throw std::runtime_error("Child object reference from `" + widget.name + "` to `" + object_name + "` does not relate to any known widgets - on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
-                        widget_type_t const tag = value.Tag();
+                        WidgetType const tag = value.Tag();
                         if (tag.size() > 1)
                         {
-                            widget_type_t const object_type = m_widget_types.at(m_widgets.at(object_name));
-                            widget_type_t const object_type_tag = to_lower(tag.substr(1)); // Removes the tag handle
+                            WidgetType const object_type = m_widget_types.at(m_widgets.at(object_name));
+                            WidgetType const object_type_tag = to_lower(tag.substr(1)); // Removes the tag handle
                             if (object_type != object_type_tag)
                                 throw std::runtime_error("Child object reference from `" + widget.name + "` to `" + object_name + "` is of type `" + object_type + "` which does not match the enforced type of `" + object_type_tag + "` on line " + std::to_string(yaml_node_line_number(value)) + " of \"" + widget_file.string() + "\"");
                         }
@@ -571,7 +571,7 @@ void structure_t::validate_and_prune_hierarchy(path_register_dependency_t const 
                             std::string const trace_recursive_object = " (recursive object)";
                             std::string trace = "";
                             bool found_first_reference = false;
-                            for (widget_type_t const &widget_ancestor : widget.hierarchy)
+                            for (WidgetType const &widget_ancestor : widget.hierarchy)
                             {
                                 if (widget_ancestor == object_name)
                                     found_first_reference = true;
@@ -583,7 +583,7 @@ void structure_t::validate_and_prune_hierarchy(path_register_dependency_t const 
                         if (referenced_widgets.find(object_name) == referenced_widgets.end())
                         {
                             referenced_widgets.insert(object_name);
-                            std::vector<widget_name_t> next_widget_hierarchy = widget.hierarchy;
+                            std::vector<WidgetName> next_widget_hierarchy = widget.hierarchy;
                             next_widget_hierarchy.push_back(widget.name);
                             widget_hierarchies_to_traverse.push_back({object_name, next_widget_hierarchy});
                         }
@@ -596,7 +596,7 @@ void structure_t::validate_and_prune_hierarchy(path_register_dependency_t const 
                             {
                                 if (value.IsScalar())
                                 {
-                                    std::string const file_path_string = value.as<widget_name_t>();
+                                    std::string const file_path_string = value.as<WidgetName>();
                                     if (file_path_string.empty())
                                         throw YAML::BadConversion(value.Mark());
                                     std::filesystem::path file_path = std::filesystem::path(file_path_string);
@@ -630,14 +630,14 @@ void structure_t::validate_and_prune_hierarchy(path_register_dependency_t const 
     // Iteratively find references throughout the hierarchy of used widgets
     while (!widget_hierarchies_to_traverse.empty())
     {
-        widget_t current_widget = widget_hierarchies_to_traverse.back();
+        Widget current_widget = widget_hierarchies_to_traverse.back();
         widget_hierarchies_to_traverse.pop_back();
         if (m_widget_contents.count(current_widget.name))
             validate_references_iterative(current_widget, m_widget_contents.at(current_widget.name), m_parsed_files.at(m_widget_files.at(current_widget.name)));
     }
 
     // Identify orphaned widgets
-    std::vector<widget_name_t> widgets_to_remove = {};
+    std::vector<WidgetName> widgets_to_remove = {};
     for (auto const &pair : m_widgets)
     {
         if (referenced_widgets.find(pair.first) == referenced_widgets.end())
@@ -649,7 +649,7 @@ void structure_t::validate_and_prune_hierarchy(path_register_dependency_t const 
     bool const pruned_all_widgets = (widgets_to_remove.size() == m_widgets.size());
 
     // Prune orphaned widgets
-    for (widget_name_t const &name : widgets_to_remove)
+    for (WidgetName const &name : widgets_to_remove)
     {
         m_widgets.erase(name);
         m_widget_contents.erase(name);
@@ -664,13 +664,13 @@ void structure_t::validate_and_prune_hierarchy(path_register_dependency_t const 
     }
 
     // Create a mapping from old type_id to new type_id
-    using widget_type_identifier_occurrences_t = int;
-    std::map<widget_type_identifier_t, widget_type_identifier_occurrences_t> const type_occurrences = count_widget_type_occurrences(m_widgets);
-    std::vector<widget_type_identifier_t> old_to_new_type_id_map(m_widget_types.size(), -1);
-    std::vector<widget_type_t> new_widget_types = {};
-    widget_type_identifier_t current_new_type_identifier = 0;
+    using WidgetTypeIdentifierOccurrences = int;
+    std::map<WidgetTypeIdentifier, WidgetTypeIdentifierOccurrences> const type_occurrences = count_widget_type_occurrences(m_widgets);
+    std::vector<WidgetTypeIdentifier> old_to_new_type_id_map(m_widget_types.size(), -1);
+    std::vector<WidgetType> new_widget_types = {};
+    WidgetTypeIdentifier current_new_type_identifier = 0;
 
-    for (widget_type_identifier_t existing_type_identifier = 0; existing_type_identifier < static_cast<widget_type_identifier_t>(m_widget_types.size()); ++existing_type_identifier)
+    for (WidgetTypeIdentifier existing_type_identifier = 0; existing_type_identifier < static_cast<WidgetTypeIdentifier>(m_widget_types.size()); ++existing_type_identifier)
     {
         if (type_occurrences.count(existing_type_identifier) && type_occurrences.at(existing_type_identifier) > 0)
         {
@@ -686,7 +686,7 @@ void structure_t::validate_and_prune_hierarchy(path_register_dependency_t const 
     m_widget_types = std::move(new_widget_types);
 }
 
-void structure_t::number_references()
+void Structure::number_references()
 {
     if (m_widgets.empty())
         return;
@@ -694,7 +694,7 @@ void structure_t::number_references()
     size_t object_reference_identifier = 0;
     for (auto &pair : m_widget_contents)
     {
-        widget_name_t const &widget_name = pair.first;
+        WidgetName const &widget_name = pair.first;
         std::filesystem::path const &widget_file = m_parsed_files.at(m_widget_files.at(widget_name));
         debug(m_debug_stream, m_name, "Resolving references to object `" + widget_name + "` with index: " + std::to_string(object_reference_identifier++));
         std::vector<YAML::Node> nested_properties;
@@ -718,12 +718,12 @@ void structure_t::number_references()
                     {
                         if (value.IsNull())
                             throw std::runtime_error("No child object reference has been defined for `object` of `" + widget_name + "` on line " + std::to_string(yaml_node_line_number(nested_property.first)) + " of \"" + widget_file.string() + "\""); // Should never be thrown (expected to be caught prior in `validate_and_prune_hierarchy` method)
-                        widget_name_t object_name;
+                        WidgetName object_name;
                         try
                         {
                             if (value.IsScalar())
                             {
-                                object_name = to_lower(value.as<widget_name_t>());
+                                object_name = to_lower(value.as<WidgetName>());
                                 if (object_name.empty())
                                     throw YAML::BadConversion(value.Mark());
                             }
@@ -748,7 +748,7 @@ void structure_t::number_references()
     }
 }
 
-std::string structure_t::build(path_register_dependency_t const &path_register_dependency_callback, bool const numeric_references)
+std::string Structure::build(PathRegisterDependency const &path_register_dependency_callback, bool const numeric_references)
 {
     validate_and_prune_hierarchy(path_register_dependency_callback);
     if (numeric_references)
@@ -766,7 +766,7 @@ std::string structure_t::build(path_register_dependency_t const &path_register_d
 
     nlohmann::json output_json;
     if (!numeric_references)
-        output_json["main"] = widget_name_t("main");
+        output_json["main"] = WidgetName("main");
     else
         output_json["main"] = main;
     if (numeric_references)

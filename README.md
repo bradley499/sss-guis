@@ -138,5 +138,5 @@ sss-guis example/configuration.yaml generated_directory
 ## Library (C++)
 The parameters of the `generate` method can be modified.
 ```cpp
-sss::guis::guis_t("example/configuration.yaml", "generated_directory").generate(false, false, nullptr);
+sss::guis::Guis("example/configuration.yaml", "generated_directory").generate(false, false, nullptr);
 ```

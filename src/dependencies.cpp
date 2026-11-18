@@ -50,16 +50,16 @@ namespace
     }
 }
 
-dependencies_t::dependencies_t(std::filesystem::path const &path)
+Dependencies::Dependencies(std::filesystem::path const &path)
     : m_path(path)
 {
 }
 
-dependencies_t::~dependencies_t()
+Dependencies::~Dependencies()
 {
 }
 
-std::vector<std::filesystem::path> dependencies_t::paths()
+std::vector<std::filesystem::path> Dependencies::paths()
 {
     if (std::filesystem::exists(m_path))
         return {m_path};

@@ -10,13 +10,13 @@
 
 namespace sss::guis
 {
-    class generation_t
+    class Generation
     {
     private:
         /**
          * @brief The structure of a GUI (prior to processing)
          */
-        struct gui_t
+        struct Gui
         {
             /**
              * @brief The name of the GUI
@@ -62,7 +62,7 @@ namespace sss::guis
         /**
          * @brief Collection of all GUI's data
          */
-        std::vector<gui_t> m_guis;
+        std::vector<Gui> m_guis;
         /**
          * @brief Collection of all dependencies
          */
@@ -86,7 +86,7 @@ namespace sss::guis
          * @param register_dependency_callback Callback function to register a path as a dependency
          * @param debug_stream A `std::ofstream` to write debug outputs to
          */
-        void generate(gui_t const &gui, std::string const &guis_js_path, path_register_dependency_t const &register_dependency_callback, std::ostream const *debug_stream = nullptr);
+        void generate(Gui const &gui, std::string const &guis_js_path, PathRegisterDependency const &register_dependency_callback, std::ostream const *debug_stream = nullptr);
         /**
          * @brief Generate a unique filename against the dependencies with a specified extension
          * @param extension The extension to use for the unique file (expected to begin with `.`)
@@ -100,11 +100,11 @@ namespace sss::guis
          * @param configuration_file The source configuration file to find structures in
          * @param output_directory The output directory for all generated file
          */
-        generation_t(std::filesystem::path const &configuration_file, std::filesystem::path const &output_directory);
+        Generation(std::filesystem::path const &configuration_file, std::filesystem::path const &output_directory);
         /**
          * @brief Deconstructor
          */
-        ~generation_t();
+        ~Generation();
         /**
          * @brief Build all GUIs and manage dependencies
          * @param disallow_conflicts Do not allow dependencies or generated file to have conflicting output file name

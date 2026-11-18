@@ -767,7 +767,7 @@ unused_component_btn:
 
     // Config file 2: nav.yaml (depends on buttons.yaml)
     temporary_directory.create_file("components/nav.yaml", R"(
-dependencies:
+include:
   - buttons.yaml
 nav_bar:
   type: navigation
@@ -777,7 +777,7 @@ nav_bar:
 
     // Config file 1: main_widgets.yaml (root widget config, depends on nav.yaml)
     temporary_directory.create_file("main_widgets.yaml", R"(
-dependencies:
+include:
   - components/nav.yaml
 main:
   type: main_layout

@@ -97,6 +97,7 @@ export function structureDeclareWidget(type: string, widget: new () => widget): 
  * @async
  * @param structurePath Path for structure location
  * @returns Promise of generated widget structure
+ * @internal
  */
 export async function structureGenerate(structurePath: string): Promise<widget> {
     await get(structurePath).then((response: structureSchema) => {

@@ -40,13 +40,10 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/package.json.tmp"
     \"version\": \"${CMAKE_PROJECT_VERSION}\",
     \"description\": \"TypeScript declaration files and stubs for creating compatible SSS widgets\",
     \"type\": \"module\",
-    \"main\": \"./widget.mjs\",
-    \"types\": \"./widget.d.ts\",
+    \"main\": \"./index.mjs\",
+    \"types\": \"./index.d.ts\",
     \"exports\": {
-        \".\": { \"types\": \"./widget.d.ts\", \"import\": \"./widget.mjs\" },
-        \"./widget\": { \"types\": \"./widget.d.ts\", \"import\": \"./widget.mjs\" },
-        \"./structure\": { \"types\": \"./structure.d.ts\", \"import\": \"./structure.mjs\" },
-        \"./resource\": { \"types\": \"./resource.d.ts\", \"import\": \"./resource.mjs\" }
+        \".\": { \"types\": \"./index.d.ts\", \"import\": \"./index.mjs\" }
     }
 }
 ")
@@ -58,13 +55,15 @@ set(NPM_PACK_DIR "${DIST_DIR}/pack")
 add_custom_target(
     sss-guis_js_bundle
     ALL
-    COMMAND npm run build
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/ts" "${WORKING_DIRECTORY_LOCATION}/ts"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/build.js" "${WORKING_DIRECTORY_LOCATION}/build.js"
+    COMMAND ${CMAKE_COMMAND} -E env "npm_config_cache=${CMAKE_CURRENT_BINARY_DIR}/.npm-cache" npm run build
     COMMAND ${CMAKE_COMMAND} -E remove_directory "${NPM_PACK_DIR}"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${DIST_DIR}" "${NPM_PACK_DIR}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${NPM_PACK_DIR}/guis.js" "${DIST_DIR}/guis.js"
     COMMAND ${CMAKE_COMMAND} -E remove -f "${NPM_PACK_DIR}/guis.js"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/package.json.tmp" "${NPM_PACK_DIR}/package.json"
-    COMMAND bash -c "PACKED_FILE=$(npm pack \"${NPM_PACK_DIR}\" --loglevel=error | tail -n 1); mv \"$PACKED_FILE\" \"${GENERATED_TARBALL}\""
+    COMMAND bash -c "PACKED_FILE=$(npm_config_cache=\"${CMAKE_CURRENT_BINARY_DIR}/.npm-cache\" npm pack \"${NPM_PACK_DIR}\" --loglevel=error | tail -n 1); mv \"$PACKED_FILE\" \"${GENERATED_TARBALL}\""
     COMMAND ${CMAKE_COMMAND} -E make_directory "${GENERATED_INCLUDE_DIRECTORY}/"
     COMMAND bash -c "set -e; set -o pipefail; echo 'unsigned char sss_guis_js[] = {' > ${TEMP_HEADER}; od -v -t x1 -An ${GENERATED_JS} | sed 's/[[:space:]]*\\([0-9a-f]\\{2\\}\\)/0x\\1, /g' >> ${TEMP_HEADER}; sed -i '$ s/, $/};/' ${TEMP_HEADER}; echo -e '\\nunsigned int sss_guis_js_len = sizeof(sss_guis_js);' >> ${TEMP_HEADER}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${TEMP_HEADER}" "${GENERATED_HEADER}"
